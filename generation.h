@@ -6,8 +6,8 @@ extern void createMap(ENTITY **out)
 	ENTITY *E;
 	
 	CreateEntity(&E);
-	void **LIST = malloc(MAPCAPACITY);
-	for (int i; i < MAPCAPACITY; i++)
+	void **LIST = malloc(MAPCAPACITY * sizeof(int*));
+	for (int i = 0; i < MAPCAPACITY; i++)
 		LIST[i] = 0;
 	SetDataFlag(E, FLAG_CONTAINER, LIST);
 	*out = E;
@@ -59,9 +59,9 @@ extern void generateGame(ENTITY **out)
 	ENTITY *playerEnt;
 	CreateEntity(&playerEnt);
 	SetDataFlag(playerEnt, FLAG_NAME, "Shithead");
-	B_PIXEL *PX;
-	b_createPixel('@', 30, PX);
-	SetDataFlag(playerEnt, FLAG_APPEARANCE, PX);
+	B_PIXEL PX;
+	b_createPixel('@', 30, &PX);
+	SetDataFlag(playerEnt, FLAG_APPEARANCE, &PX);
 	SetDataFlag(game, FLAG_PLAYER, &playerEnt);
 	B_BUFFER *buffer;
 	b_initialize(&buffer);

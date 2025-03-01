@@ -2,27 +2,12 @@
 #define NUMPAD_USE 0
 
 char __I;
-
-char __IRaw();
-
-#ifdef __unix__
 char __IRaw(char* out){
-	if (system("stty raw")) // why is there no conio
-		return 0x0; // system returns non-zero on fail
-	char next = fgetc(stdin);
-	if (system("stty -raw"))
-		return 0x0;
-	*out = next;
-	return next;
-};
-#endif
-#ifdef __CYGWIN__
-char __IRaw(char* out){
-	return getch(); // you're boned
-};
-#endif
+	fread(out, 1, 1, stdin);
+	return *out;
+}
 
-inline char __ISet(const char set){
+extern char __ISet(const char set){
 	__I = set;
 	return set;
 };
@@ -69,7 +54,7 @@ enum INPUT{
 	INVENTORY = 'i',
 };
 
-inline char qualifiesSolo(const char act){
+extern char qualifiesSolo(const char act){
 	switch(act){
 		case UP:
 		case DOWN:
@@ -95,7 +80,7 @@ inline char qualifiesSolo(const char act){
 	}
 }
 
-inline char getNextInput(){
+extern char getNextInput(){
 	__IRaw(&__I);
 	switch(__I){
 		case 0x1B: // Escape, so it must be arrow keys.
@@ -118,18 +103,18 @@ inline char getNextInput(){
 	}
 }
 
-inline int getStringInput(char *out){
-	const char res = fgets(out, 64, stdin) ? 1 : 0;
+extern int getStringInput(char **out){
+	const char res = fgets(*out, 64, stdin) ? 1 : 0;
 	for(int i = 0; i < 64; i++){
-		if (out[i] == '\n' || !out[i]){
-			out[i] = 0;
+		if ((*out)[i] == '\n' || !(*out)[i]){
+			(*out)[i] = 0;
 			break;
 		}
 	}
 	return res;
 }
 
-inline char stringEqCaseless(const char *a, const char *b){
+extern char stringEqCaseless(const char *a, const char *b){
 	for (int i = 0; i < 64; i++){
 		char tai = a[i];
 		char tbi = b[i];
@@ -145,7 +130,7 @@ inline char stringEqCaseless(const char *a, const char *b){
 	return 0;
 }
 
-inline char stringEq(const char *a, const char *b){
+extern char stringEq(const char *a, const char *b){
 	for (int i = 0; i < 64; i++){
 		if (a[i] != b[i])
 			return 0;

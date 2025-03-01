@@ -17,15 +17,10 @@ void runIntro(ENTITY *game){
 	GetDataFlag(game, FLAG_APPEARANCE, (void**)&BUFFER);
 	b_writeTo(BUFFER, 0, 0, "Welcome to NOTE.");
 	b_writeTo(BUFFER, 4, 0, "What is your name?");
-	// for (int i = 0; i < S_LENGTH; i++)
-	// {
-	// 	printf("%c", BUFFER->array[i]->text);
-	// }
-	
 	b_draw(BUFFER);
 	s_putCursor(4, 20);
 	char *PlayerName;
-	getStringInput(PlayerName);
+	getStringInput(&PlayerName);
 	SetDataFlag(game, FLAG_NAME, &PlayerName);
 	SetDataFlag(game, FLAG_PLACE, (void*)PLAYING);
 }
@@ -37,7 +32,7 @@ void runGame(ENTITY *game){
 	char leadAct = 0x0;
 	char tailAct = 0x0;
 	char commAct[64];
-	int CSTATE;
+	int CSTATE = PLAYING;
 	while (CSTATE == PLAYING){
 		GetDataFlag(game, FLAG_PLACE, (void**)&CSTATE);
 		if (CSTATE != PLAYING)
@@ -50,7 +45,7 @@ void runGame(ENTITY *game){
 			continue;
 		if(leadAct == STR_COMM){
 			s_putCursor(0, 0);
-			getStringInput(commAct);
+			getStringInput((char**)&commAct);
 			if(stringEqCaseless(commAct, "quit") || stringEqCaseless(commAct, "exit")){
 				SetDataFlag(game, FLAG_PLACE, (void**)QUIT);
 				return;

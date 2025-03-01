@@ -38,20 +38,22 @@ struct __ENT{
 
 typedef struct __ENT ENTITY;
 
-inline void ClearDataFlag(ENTITY *E, int flag)
+extern void ClearDataFlag(ENTITY *E, int flag)
 {
+	if (!(E->dataflag & (1 << flag)))
+		return;
 	E->dataflag &= ~(1 << flag);
 	free(E->data[flag]);
 }
 
-inline void SetDataFlag(ENTITY *E, int flag, void *value)
+extern void SetDataFlag(ENTITY *E, int flag, void *value)
 {
 	ClearDataFlag(E, flag); // memory leak (tm)
 	E->dataflag = E->dataflag | (1 << flag);
 	E->data[flag] = value; // Hope you malloc'd.;
 }
 
-inline void GetDataFlag(const ENTITY *E, int flag, void **out)
+extern void GetDataFlag(const ENTITY *E, int flag, void **out)
 {
 	if (E->dataflag & (1 << flag))
 		*out = E->data[flag];
@@ -62,22 +64,22 @@ inline void GetDataFlag(const ENTITY *E, int flag, void **out)
 	}
 }
 
-inline void ClearBoolFlag(ENTITY *E, int flag)
+extern void ClearBoolFlag(ENTITY *E, int flag)
 {
 	E->boolflag &= ~(1 << flag);
 }
 
-inline void SetBoolFlag(ENTITY *E, int flag)
+extern void SetBoolFlag(ENTITY *E, int flag)
 {
 	E->boolflag |= 1 << flag;
 }
 
-inline void GetBoolFlag(const ENTITY *E, int flag, char *out)
+extern void GetBoolFlag(const ENTITY *E, int flag, char *out)
 {
 	*out = E->boolflag & 1 << flag;
 }
 
-inline void DestroyEntity(ENTITY *E)
+extern void DestroyEntity(ENTITY *E)
 {
 	for (int i = 0; i < 64; i++)
 	{
@@ -89,7 +91,7 @@ inline void DestroyEntity(ENTITY *E)
 	free(E);
 }
 
-inline void CreateEntity(ENTITY **out) // creates an entity
+extern void CreateEntity(ENTITY **out) // creates an entity
 {
 	ENTITY *E = malloc(sizeof(ENTITY));
 	E->destroyed = 0;
