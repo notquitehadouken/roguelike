@@ -1,3 +1,0 @@
-void getKey(void){
-	
-}
