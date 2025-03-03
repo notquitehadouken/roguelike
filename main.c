@@ -12,7 +12,7 @@
 #include "gamestate.h"
 #include "generation.h"
 
-void runIntro(ENTITY *game){
+void runIntro(ENTITY *game) {
 	B_BUFFER *BUFFER;
 	GetDataFlag(game, FLAG_APPEARANCE, (void**)&BUFFER);
 	b_writeTo(BUFFER, 0, 0, "Welcome to NOTE.");
@@ -25,7 +25,7 @@ void runIntro(ENTITY *game){
 	SetDataFlag(game, FLAG_PLACE, (void*)PLAYING);
 }
 
-void runGame(ENTITY *game){
+void runGame(ENTITY *game) {
 	B_BUFFER *buffer;
 	GetDataFlag(game, FLAG_APPEARANCE, (void**)&buffer);
 	b_draw(buffer);
@@ -33,26 +33,40 @@ void runGame(ENTITY *game){
 	char tailAct = 0x0;
 	char commAct[64];
 	int CSTATE = PLAYING;
-	while (CSTATE == PLAYING){
+	while (CSTATE == PLAYING) {
 		GetDataFlag(game, FLAG_PLACE, (void**)&CSTATE);
 		if (CSTATE != PLAYING)
 			break;
 		leadAct = 0;
 		tailAct = 0;
+		ENTITY *map;
+		char gotMap = 0;
+		ENTITY *player;
+		GetDataFlag(game, FLAG_PLAYER, (void**)&player);
+		while (!gotMap) {
+			GetDataFlag(player, FLAG_CONTAINEDBY, (void**)&map);
+			if (!map)
+				break;
+			GetBoolFlag(map, BFLAG_ISMAP, &gotMap);
+		}
+		if (gotMap) {
+			b_writeMapToBuffer(buffer, map);
+			b_draw(buffer);
+		}
 		s_putCursor(S_ROW, S_COL - 5);
 		leadAct = getNextInput();
 		if(leadAct == FAIL)
 			continue;
-		if(leadAct == STR_COMM){
+		if(leadAct == STR_COMM) {
 			s_putCursor(0, 0);
 			getStringInput((char**)&commAct);
-			if(stringEqCaseless(commAct, "quit") || stringEqCaseless(commAct, "exit")){
+			if(stringEqCaseless(commAct, "quit") || stringEqCaseless(commAct, "exit")) {
 				SetDataFlag(game, FLAG_PLACE, (void**)QUIT);
 				return;
 			}
 			continue;
 		}
-		if(!qualifiesSolo(leadAct) ){
+		if(!qualifiesSolo(leadAct) ) {
 			tailAct = getNextInput();
 		}
 	}

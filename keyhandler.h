@@ -2,12 +2,12 @@
 #define NUMPAD_USE 0
 
 char __I;
-char __IRaw(char* out){
-	fread(out, 1, 1, stdin);
+char __IRaw(char* out) {
+	*out = getch();
 	return *out;
 }
 
-extern char __ISet(const char set){
+extern char __ISet(const char set) {
 	__I = set;
 	return set;
 };
@@ -54,8 +54,8 @@ enum INPUT{
 	INVENTORY = 'i',
 };
 
-extern char qualifiesSolo(const char act){
-	switch(act){
+extern char qualifiesSolo(const char act) {
+	switch(act) {
 		case UP:
 		case DOWN:
 		case LEFT:
@@ -80,13 +80,13 @@ extern char qualifiesSolo(const char act){
 	}
 }
 
-extern char getNextInput(){
+extern char getNextInput() {
 	__IRaw(&__I);
-	switch(__I){
+	switch(__I) {
 		case 0x1B: // Escape, so it must be arrow keys.
 			__IRaw(&__I); // Discard [
 			__IRaw(&__I); // Read direction
-			switch(__I){
+			switch(__I) {
 				case 'A':
 					return __ISet(UP);
 				case 'B':
@@ -103,10 +103,10 @@ extern char getNextInput(){
 	}
 }
 
-extern int getStringInput(char **out){
-	const char res = fgets(*out, 64, stdin) ? 1 : 0;
-	for(int i = 0; i < 64; i++){
-		if ((*out)[i] == '\n' || !(*out)[i]){
+extern int getStringInput(char **out) {
+	const char res = fgets(*out, sizeof(*out), stdin) != 0;
+	for(int i = 0; i < 64; i++) {
+		if ((*out)[i] == '\n' || !(*out)[i]) {
 			(*out)[i] = 0;
 			break;
 		}
@@ -114,8 +114,8 @@ extern int getStringInput(char **out){
 	return res;
 }
 
-extern char stringEqCaseless(const char *a, const char *b){
-	for (int i = 0; i < 64; i++){
+extern char stringEqCaseless(const char *a, const char *b) {
+	for (int i = 0; i < 64; i++) {
 		char tai = a[i];
 		char tbi = b[i];
 		if (tai >= 'A' && tai <= 'Z')
@@ -130,8 +130,8 @@ extern char stringEqCaseless(const char *a, const char *b){
 	return 0;
 }
 
-extern char stringEq(const char *a, const char *b){
-	for (int i = 0; i < 64; i++){
+extern char stringEq(const char *a, const char *b) {
+	for (int i = 0; i < 64; i++) {
 		if (a[i] != b[i])
 			return 0;
 		if (a[i] == 0x0 && b[i] == 0x0)
