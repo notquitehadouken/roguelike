@@ -60,6 +60,8 @@ extern void __WRITE(B_BUFFER *buffer, int index, B_PIXEL *pixel) {
 	if (!buffer->initialized)
 		return;
 	B_PIXEL *curPixel = buffer->array[index];
+	if (curPixel == pixel)
+
 	if (curPixel != &DEFAULT_PIXEL)
 		free(curPixel);
 	buffer->array[index] = pixel;
