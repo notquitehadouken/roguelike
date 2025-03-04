@@ -52,11 +52,8 @@ extern unsigned long b_getIndex(int row, int col) {  // so i don't need to write
 extern void __WRITE(B_BUFFER *buffer, int index, B_PIXEL *pixel) {
 	if (!buffer->initialized)
 		return;
-	B_PIXEL *curPixel = buffer->array[index];
-	if (curPixel == pixel)
+	if (buffer->array[index] == pixel)
 		return;
-	if (curPixel != &DEFAULT_PIXEL)
-		free(curPixel);
 	buffer->array[index] = pixel;
 }
 
@@ -90,13 +87,12 @@ extern void s_putPixel(const B_PIXEL *P) {
 	printf("\033[%im%c\033[0m", P->color, P->text);
 }
 
-B_BUFFER __CB = {0};
+B_BUFFER *curbuffer = {0};
 
 extern void b_draw(const B_BUFFER* buffer) {
-	B_BUFFER *curbuffer = &__CB;
-	if (!curbuffer->initialized)
+	if (curbuffer == NULL || !curbuffer->initialized)
 		b_initialize(&curbuffer);
-	puts("\033[3J\033[2J"); /* deprecated until i find a better solution
+	/* puts("\033[3J\033[2J"); /* deprecated until i find a better solution
 	ED ansi code twice.
 	3 means clear entire screen and buffer,
 	2 means clear entire screen.

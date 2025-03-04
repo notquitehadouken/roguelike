@@ -19,7 +19,7 @@ void runIntro(ENTITY *game) {
 	b_writeTo(BUFFER, 4, 0, "What is your name?");
 	b_draw(BUFFER);
 	s_putCursor(4, 20);
-	char *PlayerName;
+	char PlayerName[MAX_STR_LEN];
 	getStringInput(&PlayerName);
 	SetDataFlag(game, FLAG_NAME, &PlayerName);
 	SetDataFlag(game, FLAG_PLACE, (void*)PLAYING);
@@ -73,6 +73,7 @@ void runGame(ENTITY *game) {
 }
 
 int main(void) {
+	setvbuf(stdin, NULL, _IONBF, 0);
 	ENTITY *game;
 	generateGame(&game);
 	runIntro(game);

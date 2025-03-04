@@ -1,13 +1,14 @@
 #pragma once
-#if defined __linux__
+#if defined __unix__ || defined __APPLE__ && defined __MACH__
+#define __USING_TERMIOS
 #include <termios.h>
-#elif defined _WIN32
+#else
 #include <conio.h>
 #endif
 #define NUMPAD_USE 0
 #define MAX_STR_LEN 64
 
-#ifdef __unix__
+#ifdef __USING_TERMIOS
 void setUnbuffered() {
 	struct termios settings;
 	tcgetattr(0, &settings);
@@ -20,14 +21,12 @@ void setUnbuffered() {
 
 char __I;
 char __getc(char* out) {
-	char c;
-#if defined __unix__
+	char c = 0;
+#ifdef __USING_TERMIOS
 	setUnbuffered();
 	c = getc(stdin);
-#elif defined _WIN32
-	c = getche();
-#elif
-	c = 0;
+#else
+	c = _getche();
 #endif
 	*out = c;
 	return *out;
@@ -129,10 +128,12 @@ extern char getNextInput() {
 	}
 }
 
-extern void getStringInput(char **out) {
+extern void getStringInput(char *out[]) {
 	int totalLen = 0;
 	char *str = calloc(MAX_STR_LEN, sizeof(char));
-	scanf_s("%63f", *out);
+	char form[16];
+	sprintf_s(form, sizeof(form), "%%%ds", MAX_STR_LEN - 1);
+	scanf_s(form, *out);
 	*out = str;
 }
 
