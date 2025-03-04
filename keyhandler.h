@@ -1,13 +1,39 @@
 #pragma once
+#if defined __linux__
+#include <termios.h>
+#elif defined _WIN32
+#include <conio.h>
+#endif
 #define NUMPAD_USE 0
+#define MAX_STR_LEN 64
+
+#ifdef __unix__
+void setUnbuffered() {
+	struct termios settings;
+	tcgetattr(0, &settings);
+	settings.c_lflag &= ~ICANON;
+	settings.c_cc[VTIME] = 0;
+	settings.c_cc[VMIN] = 1;
+	tcsetattr(0, &settings);
+}
+#endif
 
 char __I;
-char __IRaw(char* out) {
-	*out = getch();
+char __getc(char* out) {
+	char c;
+#if defined __unix__
+	setUnbuffered();
+	c = getc(stdin);
+#elif defined _WIN32
+	c = getche();
+#elif
+	c = 0;
+#endif
+	*out = c;
 	return *out;
 }
 
-extern char __ISet(const char set) {
+extern char __setc(const char set) {
 	__I = set;
 	return set;
 };
@@ -81,41 +107,37 @@ extern char qualifiesSolo(const char act) {
 }
 
 extern char getNextInput() {
-	__IRaw(&__I);
+	__getc(&__I);
 	switch(__I) {
 		case 0x1B: // Escape, so it must be arrow keys.
-			__IRaw(&__I); // Discard [
-			__IRaw(&__I); // Read direction
+			__getc(&__I); // Discard [
+			__getc(&__I); // Read direction
 			switch(__I) {
 				case 'A':
-					return __ISet(UP);
+					return __setc(UP);
 				case 'B':
-					return __ISet(DOWN);
+					return __setc(DOWN);
 				case 'C':
-					return __ISet(RIGHT);
+					return __setc(RIGHT);
 				case 'D':
-					return __ISet(LEFT);
+					return __setc(LEFT);
 				default:
-					return __ISet(FAIL); // What have you done?
+					return __setc(FAIL); // What have you done?
 			}
 		default:
 			return __I;
 	}
 }
 
-extern int getStringInput(char **out) {
-	const char res = fgets(*out, sizeof(*out), stdin) != 0;
-	for(int i = 0; i < 64; i++) {
-		if ((*out)[i] == '\n' || !(*out)[i]) {
-			(*out)[i] = 0;
-			break;
-		}
-	}
-	return res;
+extern void getStringInput(char **out) {
+	int totalLen = 0;
+	char *str = calloc(MAX_STR_LEN, sizeof(char));
+	scanf_s("%63f", *out);
+	*out = str;
 }
 
 extern char stringEqCaseless(const char *a, const char *b) {
-	for (int i = 0; i < 64; i++) {
+	for (int i = 0; i < MAX_STR_LEN; i++) {
 		char tai = a[i];
 		char tbi = b[i];
 		if (tai >= 'A' && tai <= 'Z')
@@ -131,7 +153,7 @@ extern char stringEqCaseless(const char *a, const char *b) {
 }
 
 extern char stringEq(const char *a, const char *b) {
-	for (int i = 0; i < 64; i++) {
+	for (int i = 0; i < MAX_STR_LEN; i++) {
 		if (a[i] != b[i])
 			return 0;
 		if (a[i] == 0x0 && b[i] == 0x0)

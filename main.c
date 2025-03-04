@@ -31,7 +31,7 @@ void runGame(ENTITY *game) {
 	b_draw(buffer);
 	char leadAct = 0x0;
 	char tailAct = 0x0;
-	char commAct[64];
+	char commAct[MAX_STR_LEN];
 	int CSTATE = PLAYING;
 	while (CSTATE == PLAYING) {
 		GetDataFlag(game, FLAG_PLACE, (void**)&CSTATE);

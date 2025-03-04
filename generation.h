@@ -69,7 +69,10 @@ extern void generateGame(ENTITY **out) {
 	for (int y = 0; y < MAP_HEIGHT; y++) {
 		ENTITY *floorTile;
 		CreateEntity(&floorTile);
-		SetDataFlag(floorTile, FLAG_APPEARANCE, &DEFAULT_PIXEL);
+		B_PIXEL *floorPixel = malloc(sizeof(floorPixel));
+		floorPixel->text = '.';
+		floorPixel->color = 30;
+		SetDataFlag(floorTile, FLAG_APPEARANCE, floorPixel);
 		unsigned int *P = malloc(sizeof(unsigned int));
 		ConvertToPosDat(1, x, y, P);
 		SetDataFlag(floorTile, FLAG_POS, P);
@@ -78,8 +81,9 @@ extern void generateGame(ENTITY **out) {
 	ENTITY *playerEnt;
 	CreateEntity(&playerEnt);
 	SetDataFlag(playerEnt, FLAG_NAME, "Shithead");
-	B_PIXEL *PX = malloc(sizeof(B_PIXEL));
-	b_createPixel('@', 31, PX);
+	B_PIXEL *PX = malloc(sizeof(PX));
+	PX->text = '@';
+	PX->color = 31;
 	SetDataFlag(playerEnt, FLAG_APPEARANCE, PX);
 	unsigned int *PlayerPos = malloc(sizeof(unsigned int));
 	*PlayerPos = 0xFF000000;

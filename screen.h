@@ -2,7 +2,7 @@
 #define S_ROW 50
 #define S_COL 80
 #define S_LENGTH S_ROW*S_COL
-#define B_DEFAULT_TEXT '.'
+#define B_DEFAULT_TEXT ' '
 #define B_DEFAULT_COLOR 39 // White
 #include "gamestate.h"
 #include "object.h"
@@ -13,13 +13,6 @@ struct __PIXEL{
 };
 
 typedef struct __PIXEL B_PIXEL;
-
-extern void b_createPixel(char text, char color, B_PIXEL *out) {
-	B_PIXEL P;
-	P.text = text;
-	P.color = color;
-	*out = P;
-}
 
 B_PIXEL DEFAULT_PIXEL = {B_DEFAULT_TEXT, B_DEFAULT_COLOR};
 
@@ -37,9 +30,9 @@ struct __BUFFER{
 typedef struct __BUFFER B_BUFFER;
 
 extern void b_factory(B_BUFFER* buffer) {
+	buffer->initialized = 1;
 	for (int iter = 0; iter < S_ROW*S_COL; iter++)
 		buffer->array[iter] = &DEFAULT_PIXEL;
-	buffer->initialized = 1;
 }
 
 extern void b_discard(B_BUFFER *buffer) {
@@ -61,7 +54,7 @@ extern void __WRITE(B_BUFFER *buffer, int index, B_PIXEL *pixel) {
 		return;
 	B_PIXEL *curPixel = buffer->array[index];
 	if (curPixel == pixel)
-
+		return;
 	if (curPixel != &DEFAULT_PIXEL)
 		free(curPixel);
 	buffer->array[index] = pixel;

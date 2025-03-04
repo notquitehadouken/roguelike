@@ -86,7 +86,7 @@ extern char HasBoolFlag(const ENTITY *E, const int flag) {
 }
 
 extern void DestroyEntity(ENTITY *E) {
-	for (int i = 0; i < 64; i++) {
+	for (int i = 0; i < MAX_STR_LEN; i++) {
 		ClearDataFlag(E, i);
 	}
 	E->dataflag = 0;
