@@ -1,5 +1,5 @@
 #pragma once
-#define CONTAINERCAPACITY 4096
+#define CONTAINERCAPACITY 65536
 #define GAMETOTALMAPS 256
 #include "object.h"
 

@@ -1,9 +1,10 @@
 #pragma once
+#define S_COL 160
 #define S_ROW 50
-#define S_COL 80
 #define S_LENGTH S_ROW*S_COL
 #define B_DEFAULT_TEXT ' '
 #define B_DEFAULT_COLOR 39 // White
+
 #include "gamestate.h"
 #include "object.h"
 
@@ -18,8 +19,7 @@ B_PIXEL DEFAULT_PIXEL = {B_DEFAULT_TEXT, B_DEFAULT_COLOR};
 
 extern char b_pixEq(const B_PIXEL *a, const B_PIXEL *b) {
 	if (a == b) return 1;
-	char bothInvis = (a->text <= ' ' || a->text >= 127) && (b->text <= ' ' || b->text >= 127);
-	return bothInvis || (a->text == b->text && a->color == b->color);
+	return ((a->text <= ' ' || a->text >= 127) && (b->text <= ' ' || b->text >= 127)) || (a->text == b->text && a->color == b->color);
 }
 
 struct __BUFFER{
@@ -45,11 +45,11 @@ extern void b_initialize(B_BUFFER **buffer) {
 	b_factory(*buffer);
 }
 
-extern unsigned long b_getIndex(int row, int col) {  // so i don't need to write row * S_COL + col 5000 times
+extern unsigned long b_getIndex(const int row, const int col) {  // so i don't need to write row * S_COL + col 5000 times
 	return row * S_COL + col;
 }
 
-extern void __WRITE(B_BUFFER *buffer, int index, B_PIXEL *pixel) {
+extern void __WRITE(B_BUFFER *buffer, const int index, B_PIXEL *pixel) {
 	if (!buffer->initialized)
 		return;
 	if (buffer->array[index] == pixel)
@@ -57,15 +57,15 @@ extern void __WRITE(B_BUFFER *buffer, int index, B_PIXEL *pixel) {
 	buffer->array[index] = pixel;
 }
 
-extern void b_getPixel(const B_BUFFER *buffer, int row, int col, B_PIXEL **out) {
+extern void b_getPixel(const B_BUFFER *buffer, const int row, const int col, B_PIXEL **out) {
 	*out = buffer->array[b_getIndex(row, col)];
 }
 
-extern void b_setPixel(B_BUFFER *buffer, int row, int col, B_PIXEL *pixel) {
+extern void b_setPixel(B_BUFFER *buffer, const int row, const int col, B_PIXEL *pixel) {
 	__WRITE(buffer, b_getIndex(row, col), pixel);
 }
 
-extern void b_writeToColor(B_BUFFER *buffer, int row, int col, const char *text, char color) {
+extern void b_writeToColor(B_BUFFER *buffer, const int row, const int col, const char *text, char color) {
 	const int index = b_getIndex(row, col);
 	for (int i = 0; text[i]; i++) {
 		B_PIXEL *P = malloc(2);
@@ -75,41 +75,68 @@ extern void b_writeToColor(B_BUFFER *buffer, int row, int col, const char *text,
 	}
 }
 
-extern void b_writeTo(B_BUFFER *buffer, int row, int col, const char *text) {
+extern void b_writeTo(B_BUFFER *buffer, const int row, const int col, const char *text) {
 	b_writeToColor(buffer, row, col, text, B_DEFAULT_COLOR);
 }
 
-extern void s_putCursor(int row, int col) {
+extern void s_putCursor(const int row, const int col) {
 	printf("\033[%i;%iH", row+1, col+1);
 }
 
-extern void s_putPixel(const B_PIXEL *P) {
-	printf("\033[%im%c\033[0m", P->color, P->text);
+extern void s_clearScreen() {
+	printf("\033[3J\033[2J");
+	fflush(stdout);
 }
 
 B_BUFFER *curbuffer = {0};
 
 extern void b_draw(const B_BUFFER* buffer) {
-	if (curbuffer == NULL || !curbuffer->initialized)
+	if (curbuffer == NULL || !curbuffer->initialized) {
+		s_clearScreen();
 		b_initialize(&curbuffer);
-	/* puts("\033[3J\033[2J"); /* deprecated until i find a better solution
-	ED ansi code twice.
-	3 means clear entire screen and buffer,
-	2 means clear entire screen.
-	Both are called because jank.*/
+	}
 	for (int row = 0; row < S_ROW; row++) {
+		char *sBuffer = calloc(16 * S_COL, sizeof(char));
+		char tryPrint = 0;
+		int startColumn = -1;
+		int lastEnd = 0;
+		char lastColor = 0;
+		int index = 0;
 		for (int col = 0; col < S_COL; col++) {
 			B_PIXEL *pixel, *curpixel;
 			b_getPixel(buffer, row, col, &pixel);
 			b_getPixel(curbuffer, row, col, &curpixel);
-			if (b_pixEq(pixel, curpixel))
+			if (b_pixEq(pixel, curpixel)) {
+				if (tryPrint) {
+					tryPrint = 0;
+					s_putCursor(row, startColumn);
+					startColumn = -1;
+					printf(sBuffer + lastEnd);
+				}
 				continue;
-			s_putCursor(row, col);
-			s_putPixel(pixel);
+			}
+			if (col == S_COL - 1 && tryPrint) {
+				s_putCursor(row, startColumn);
+				startColumn = -1;
+				printf(sBuffer + lastEnd);
+			}
+			tryPrint = 1;
+			if (startColumn == -1) {
+				lastEnd = strlen(sBuffer);
+				startColumn = col;
+			}
+			if (lastColor != pixel->color) {
+				sprintf(sBuffer + strlen(sBuffer), "\033[0m\033[%im", pixel->color);
+				lastColor = pixel->color;
+			}
+			sprintf(sBuffer + strlen(sBuffer), "%c", pixel->text);
 			b_setPixel(curbuffer, row, col, pixel);
 		}
+		free(sBuffer);
+		printf("\033[0m");
 	}
 	s_putCursor(S_ROW, S_COL);
+	printf("\033[0m");
 }
 
 extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {

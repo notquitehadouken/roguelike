@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <conio.h>
+#include <string.h>
 
 #include "keyhandler.h"
 #include "screen.h"
@@ -20,15 +20,13 @@ void runIntro(ENTITY *game) {
 	b_draw(BUFFER);
 	s_putCursor(4, 20);
 	char PlayerName[MAX_STR_LEN];
-	getStringInput(&PlayerName);
+	getStringInput((char**)&PlayerName);
 	SetDataFlag(game, FLAG_NAME, &PlayerName);
 	SetDataFlag(game, FLAG_PLACE, (void*)PLAYING);
 }
 
 void runGame(ENTITY *game) {
 	B_BUFFER *buffer;
-	GetDataFlag(game, FLAG_APPEARANCE, (void**)&buffer);
-	b_draw(buffer);
 	char leadAct = 0x0;
 	char tailAct = 0x0;
 	char commAct[MAX_STR_LEN];
@@ -49,6 +47,7 @@ void runGame(ENTITY *game) {
 				break;
 			GetBoolFlag(map, BFLAG_ISMAP, &gotMap);
 		}
+		GetDataFlag(game, FLAG_APPEARANCE, (void**)&buffer);
 		if (gotMap) {
 			b_writeMapToBuffer(buffer, map);
 			b_draw(buffer);
@@ -73,7 +72,7 @@ void runGame(ENTITY *game) {
 }
 
 int main(void) {
-	setvbuf(stdin, NULL, _IONBF, 0);
+	s_clearScreen();
 	ENTITY *game;
 	generateGame(&game);
 	runIntro(game);

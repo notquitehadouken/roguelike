@@ -128,12 +128,11 @@ extern char getNextInput() {
 	}
 }
 
-extern void getStringInput(char *out[]) {
-	int totalLen = 0;
+extern void getStringInput(char **out) {
 	char *str = calloc(MAX_STR_LEN, sizeof(char));
 	char form[16];
 	sprintf_s(form, sizeof(form), "%%%ds", MAX_STR_LEN - 1);
-	scanf_s(form, *out);
+	scanf_s(form, str);
 	*out = str;
 }
 
