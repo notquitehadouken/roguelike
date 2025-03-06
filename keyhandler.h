@@ -14,7 +14,7 @@ void setUnbuffered() {
 	settings.c_lflag &= ~ICANON;
 	settings.c_cc[VTIME] = 0;
 	settings.c_cc[VMIN] = 1;
-	tcsetattr(0, &settings);
+	tcsetattr(0, TCSANOW, &settings);
 }
 #endif
 
@@ -80,6 +80,8 @@ enum INPUT{
 
 extern char qualifiesSolo(const char act) {
 	switch(act) {
+		case '\n':
+		case '\r':
 		case UP:
 		case DOWN:
 		case LEFT:
@@ -88,6 +90,7 @@ extern char qualifiesSolo(const char act) {
 		case UPLEFT:
 		case DOWNRIGHT:
 		case DOWNLEFT:
+#ifndef NUMPAD_USE
 		case UP_KEEP:
 		case DOWN_KEEP:
 		case LEFT_KEEP:
@@ -98,6 +101,9 @@ extern char qualifiesSolo(const char act) {
 		case DOWNLEFT_KEEP:
 		case INVENTORY:
 		case OPEN_HELP:
+#else
+		case 0:
+#endif
 			return 1;
 		default:
 			return 0;
@@ -130,8 +136,8 @@ extern char getNextInput() {
 extern void getStringInput(char **out) {
 	char *str = malloc(MAX_STR_LEN * sizeof(char));
 	char form[16];
-	sprintf_s(form, sizeof(form), "%%%ds", MAX_STR_LEN - 1);
-	scanf_s(form, str);
+	sprintf(form,  "%%%ds", MAX_STR_LEN - 1);
+	scanf(form, str);
 	*out = str;
 }
 

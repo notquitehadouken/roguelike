@@ -111,14 +111,14 @@ extern void b_draw(const B_BUFFER* buffer) {
 					tryPrint = 0;
 					s_putCursor(row, startColumn);
 					startColumn = -1;
-					printf(sBuffer + lastEnd);
+					fputs(sBuffer + lastEnd, stdout);
 				}
 				continue;
 			}
 			if (col == S_COL - 1 && tryPrint) {
 				s_putCursor(row, startColumn);
 				startColumn = -1;
-				printf(sBuffer + lastEnd);
+				fputs(sBuffer + lastEnd, stdout);
 			}
 			tryPrint = 1;
 			if (startColumn == -1) {
@@ -137,6 +137,7 @@ extern void b_draw(const B_BUFFER* buffer) {
 	}
 	s_putCursor(S_ROW, S_COL);
 	printf("\033[0m");
+	fflush(stdout);
 }
 
 extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {
