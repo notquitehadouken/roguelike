@@ -5,7 +5,6 @@
 #else
 #include <conio.h>
 #endif
-#define NUMPAD_USE 0
 #define MAX_STR_LEN 64
 
 #ifdef __USING_TERMIOS
@@ -41,7 +40,7 @@ enum INPUT{
 	FAIL = (char)0xFF,
 	STR_COMM = '!',
 	OPEN_HELP = '?',
-#if NUMPAD_USE == 0
+#ifndef NUMPAD_USE
 	UP_KEEP = 'K',
 	DOWN_KEEP = 'J',
 	LEFT_KEEP = 'H',
@@ -129,7 +128,7 @@ extern char getNextInput() {
 }
 
 extern void getStringInput(char **out) {
-	char *str = calloc(MAX_STR_LEN, sizeof(char));
+	char *str = malloc(MAX_STR_LEN * sizeof(char));
 	char form[16];
 	sprintf_s(form, sizeof(form), "%%%ds", MAX_STR_LEN - 1);
 	scanf_s(form, str);

@@ -1,7 +1,4 @@
 // As Kaze Emanuar once said, "Make as many assumptions as possible in your code"
-#define DEBUG
-#define VIOLENT_DEBUG
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,21 +16,23 @@ void runIntro(ENTITY *game) {
 	b_writeTo(BUFFER, 4, 0, "What is your name?");
 	b_draw(BUFFER);
 	s_putCursor(4, 20);
-	char PlayerName[MAX_STR_LEN];
+	char *PlayerName;
 	getStringInput((char**)&PlayerName);
 	SetDataFlag(game, FLAG_NAME, &PlayerName);
-	SetDataFlag(game, FLAG_PLACE, (void*)PLAYING);
+	int *place = malloc(sizeof(int));
+	*place = PLAYING;
+	SetDataFlag(game, FLAG_PLACE, (void*)place);
 }
 
 void runGame(ENTITY *game) {
 	B_BUFFER *buffer;
 	char leadAct = 0x0;
 	char tailAct = 0x0;
-	char commAct[MAX_STR_LEN];
-	int CSTATE = PLAYING;
-	while (CSTATE == PLAYING) {
+	char *commAct;
+	int *CSTATE = 0;
+	while (!CSTATE || *CSTATE == PLAYING) {
 		GetDataFlag(game, FLAG_PLACE, (void**)&CSTATE);
-		if (CSTATE != PLAYING)
+		if (*CSTATE != PLAYING)
 			break;
 		leadAct = 0;
 		tailAct = 0;
@@ -60,7 +59,9 @@ void runGame(ENTITY *game) {
 			s_putCursor(0, 0);
 			getStringInput((char**)&commAct);
 			if(stringEqCaseless(commAct, "quit") || stringEqCaseless(commAct, "exit")) {
-				SetDataFlag(game, FLAG_PLACE, (void**)QUIT);
+				int *place = malloc(sizeof(int));
+				*place = QUIT;
+				SetDataFlag(game, FLAG_PLACE, &place);
 				return;
 			}
 			continue;

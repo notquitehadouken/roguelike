@@ -45,8 +45,12 @@ extern void ConvertToPosDat(const int Z, const int X, const int Y, unsigned int 
 	*out = Z << (4 * 6) | X << (4 * 3) | Y;
 }
 
+extern char HasDataFlag(const ENTITY* E, const int flag) {
+	return (E->dataflag & (1 << flag)) != 0;
+}
+
 extern void ClearDataFlag(ENTITY *E, const int flag) {
-	if (!(E->dataflag & (1 << flag)))
+	if (!HasDataFlag(E, flag))
 		return;
 	E->dataflag &= ~(1 << flag);
 	free(E->data[flag]);
@@ -63,10 +67,6 @@ extern void GetDataFlag(const ENTITY *E, const int flag, void **out) {
 		*out = E->data[flag];
 	else
 		*out = 0;
-}
-
-extern char HasDataFlag(const ENTITY* E, const int flag) {
-	return (E->dataflag & (1 << flag)) != 0;
 }
 
 extern void ClearBoolFlag(ENTITY *E, const int flag) {

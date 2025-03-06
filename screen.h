@@ -1,6 +1,6 @@
 #pragma once
 #define S_COL 160
-#define S_ROW 50
+#define S_ROW 40
 #define S_LENGTH S_ROW*S_COL
 #define B_DEFAULT_TEXT ' '
 #define B_DEFAULT_COLOR 39 // White
