@@ -3,11 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+int GLOBAL_TIMER = 0; // 256 is considered "One second"
+
 #include "keyhandler.h"
 #include "screen.h"
 #include "object.h"
 #include "gamestate.h"
 #include "generation.h"
+#include "acts.h"
 
 void runIntro(ENTITY *game) {
 	B_BUFFER *BUFFER;
@@ -53,18 +56,30 @@ void runGame(ENTITY *game) {
 		}
 		s_putCursor(S_ROW, S_COL - 5);
 		leadAct = getNextInput();
-		if(leadAct == FAIL)
-			continue;
-		if(leadAct == STR_COMM) {
-			s_putCursor(0, 0);
-			getStringInput((char**)&commAct);
-			if(stringEqCaseless(commAct, "quit") || stringEqCaseless(commAct, "exit")) {
-				int *place = malloc(sizeof(int));
-				*place = QUIT;
-				SetDataFlag(game, FLAG_PLACE, &place);
-				return;
-			}
-			continue;
+		switch (leadAct) {
+			case FAIL:
+				break;
+			case STR_COMM:
+				s_putCursor(0, 0);
+				getStringInput((char**)&commAct);
+				if(stringEqCaseless(commAct, "quit") || stringEqCaseless(commAct, "exit")) {
+					int *place = malloc(sizeof(int));
+					*place = QUIT;
+					SetDataFlag(game, FLAG_PLACE, &place);
+					return;
+				}
+				break;
+			case UP:
+			case DOWN:
+			case LEFT:
+			case RIGHT:
+			case UPLEFT:
+			case UPRIGHT:
+			case DOWNLEFT:
+			case DOWNRIGHT:
+				break;
+			default:
+				break;
 		}
 		if(!qualifiesSolo(leadAct) ) {
 			tailAct = getNextInput();

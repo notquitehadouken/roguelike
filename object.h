@@ -1,5 +1,6 @@
 // Deleted and rewritten, August 30
 #pragma once
+#include "generation.h"
 
 int __UID = 0;
 
@@ -36,7 +37,7 @@ struct __ENT{
 typedef struct __ENT ENTITY;
 
 extern void ConvertToZXY(const unsigned int position, int *Z, int *X, int *Y) {
-	*Z = (position >> 24) & 0xFFF;
+	*Z = (position >> 24) & 0xFF;
 	*X = (position >> 12) & 0xFFF;
 	*Y = position & 0xFFF;
 }
@@ -105,4 +106,32 @@ extern void CreateEntity(ENTITY **out) { // creates an entity
 		E->data[i] = 0;
 	}
 	*out = E;
+}
+
+extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, ENTITY ***out, int *count) {
+	ENTITY **ELIST;
+	GetDataFlag(MAP, FLAG_CONTAINER, (void**)&ELIST);
+	if (!ELIST)
+		return 0;
+	ENTITY **list = calloc(CONTAINERCAPACITY, sizeof(ENTITY*));
+	*count = 0;
+	for (int i = 0; i < CONTAINERCAPACITY; i++) {
+		if (!ELIST[i])
+			break;
+		unsigned int *pos;
+		GetDataFlag(ELIST[i], FLAG_POS, (void**)&pos);
+		int _, x, y;
+		ConvertToZXY(*pos, &_, &x, &y);
+		if (x == X && y == Y) {
+			list[i] = ELIST[i];
+			*count++;
+		}
+	}
+	ENTITY **nList = calloc(*count, sizeof(ENTITY*));
+	for (int i = 0; i < *count; i++) {
+		nList[i] = list[i];
+	}
+	*out = nList;
+	free(list);
+	return 1;
 }

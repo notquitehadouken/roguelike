@@ -80,6 +80,7 @@ enum INPUT{
 
 extern char qualifiesSolo(const char act) {
 	switch(act) {
+		case 0:
 		case '\n':
 		case '\r':
 		case UP:
@@ -99,11 +100,9 @@ extern char qualifiesSolo(const char act) {
 		case UPLEFT_KEEP:
 		case DOWNRIGHT_KEEP:
 		case DOWNLEFT_KEEP:
+#endif
 		case INVENTORY:
 		case OPEN_HELP:
-#else
-		case 0:
-#endif
 			return 1;
 		default:
 			return 0;

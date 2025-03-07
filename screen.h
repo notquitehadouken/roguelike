@@ -80,11 +80,11 @@ extern void b_writeTo(B_BUFFER *buffer, const int row, const int col, const char
 }
 
 extern void s_putCursor(const int row, const int col) {
-	printf("\033[%i;%iH", row+1, col+1);
+	fprintf(stdout, "\033[%i;%iH", row+1, col+1);
 }
 
 extern void s_clearScreen() {
-	printf("\033[3J\033[2J");
+	fputs("\033[3J\033[2J", stdout);
 	fflush(stdout);
 }
 
@@ -101,7 +101,6 @@ extern void b_draw(const B_BUFFER* buffer) {
 		int startColumn = -1;
 		int lastEnd = 0;
 		char lastColor = 0;
-		int index = 0;
 		for (int col = 0; col < S_COL; col++) {
 			B_PIXEL *pixel, *curpixel;
 			b_getPixel(buffer, row, col, &pixel);
@@ -133,10 +132,10 @@ extern void b_draw(const B_BUFFER* buffer) {
 			b_setPixel(curbuffer, row, col, pixel);
 		}
 		free(sBuffer);
-		printf("\033[0m");
+		fputs("\033[0m", stdout);
 	}
 	s_putCursor(S_ROW, S_COL);
-	printf("\033[0m");
+	fputs("\033[0m", stdout);
 	fflush(stdout);
 }
 

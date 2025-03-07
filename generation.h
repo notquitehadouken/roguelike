@@ -80,7 +80,7 @@ extern void generateGame(ENTITY **out) {
 	}
 	ENTITY *playerEnt;
 	CreateEntity(&playerEnt);
-	SetDataFlag(playerEnt, FLAG_NAME, "Shithead");
+	SetDataFlag(playerEnt, FLAG_NAME, "Player");
 	B_PIXEL *PX = malloc(sizeof(PX));
 	PX->text = '@';
 	PX->color = 31;
