@@ -74,7 +74,7 @@ extern void generateGame(ENTITY **out) {
 		ConvertToPosDat(1, x, y, P);
 		SetDataFlag(floorTile, FLAG_POS, P);
 		addEntToContainer(map, floorTile);
-    if (x % 10 < 3 && y % 2) {
+    if (x > 3 && y > 3 && ((int)floorTile % 15 == 0)) {
       ENTITY *wall;
       CreateEntity(&wall);
       B_PIXEL *wallPixel = malloc(sizeof(wallPixel));

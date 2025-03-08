@@ -1,10 +1,8 @@
 // Deleted and rewritten, August 30
 #pragma once
+#include "gamestate.h"
 #define CONTAINERCAPACITY 65536
 #define GAMETOTALMAPS 256
-#define MAP_WIDTH 160
-#define MAP_HEIGHT 35
-#define MAP_LENGTH MAP_WIDTH*MAP_HEIGHT
 
 int __UID = 0;
 
@@ -118,7 +116,7 @@ extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, E
 	if (!ELIST)
 		return 0;
 	ENTITY **list = malloc(CONTAINERCAPACITY * sizeof(ENTITY*));
-  *count = 0;
+	*count = 0;
 	for (int i = 0; i < CONTAINERCAPACITY; i++) {
 		if (!ELIST[i])
 			break;

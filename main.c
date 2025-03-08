@@ -5,10 +5,10 @@
 
 int GLOBAL_TIMER = 0; // 256 is considered "One second"
 
+#include "gamestate.h"
 #include "keyhandler.h"
 #include "object.h"
 #include "screen.h"
-#include "gamestate.h"
 #include "generation.h"
 #include "acts.h"
 
