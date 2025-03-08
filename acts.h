@@ -2,41 +2,49 @@
 
 extern void DirToVec2(const char dir, int *outX, int *outY) {
     switch (dir) {
+        case UP_KEEP:
         case UP: {
             *outY = -1;
             *outX = 0;
             break;
         }
+        case DOWN_KEEP:
         case DOWN: {
             *outY = 1;
             *outX = 0;
             break;
         }
+        case LEFT_KEEP:
         case LEFT: {
             *outY = 0;
             *outX = -1;
             break;
         }
+        case RIGHT_KEEP:
         case RIGHT: {
             *outY = 0;
             *outX = 1;
             break;
         }
+        case UPLEFT_KEEP:
         case UPLEFT: {
             *outY = -1;
             *outX = -1;
             break;
         }
+        case UPRIGHT_KEEP:
         case UPRIGHT: {
             *outY = -1;
             *outX = 1;
             break;
         }
+        case DOWNLEFT_KEEP:
         case DOWNLEFT: {
             *outY = 1;
             *outX = -1;
             break;
         }
+        case DOWNRIGHT_KEEP:
         case DOWNRIGHT: {
             *outY = 1;
             *outX = 1;
@@ -50,7 +58,7 @@ extern void DirToVec2(const char dir, int *outX, int *outY) {
     }
 }
 
-extern int TryMove(ENTITY* E, const char dir) {
+extern int TryMove(ENTITY* E, const int dir) {
     int desiredDX, desiredDY;
     DirToVec2(dir, &desiredDX, &desiredDY);
     if (desiredDX == 0 && desiredDY == 0)
@@ -79,5 +87,6 @@ extern int TryMove(ENTITY* E, const char dir) {
     }
     free(ELIST);
     ConvertToPosDat(_, x, y, posDat);
+    GLOBAL_TIMER += 64;
     return 64;
 }

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int GLOBAL_TIMER = 0; // 256 is considered "One second"
+unsigned long long GLOBAL_TIMER = 0; // 256 is considered "One second"
 
 #include "gamestate.h"
 #include "keyhandler.h"
@@ -60,7 +60,7 @@ void runGame(ENTITY *game) {
     switch (leadAct) {
       case FAIL:
         break;
-      case STR_COMM:
+      case STR_COMM: {
         s_putCursor(0, 0);
         getStringInput((char**)&commAct);
         if(stringEqCaseless(commAct, "quit") || stringEqCaseless(commAct, "exit")) {
@@ -69,7 +69,8 @@ void runGame(ENTITY *game) {
           SetDataFlag(game, FLAG_PLACE, &place);
           return;
         }
-        break;
+      }
+      break;
       case UP:
       case DOWN:
       case LEFT:
@@ -77,15 +78,29 @@ void runGame(ENTITY *game) {
       case UPLEFT:
       case UPRIGHT:
       case DOWNLEFT:
-      case DOWNRIGHT:
+      case DOWNRIGHT: {
         TryMove(player, leadAct);
         break;
-      case BUFFER_REDRAW:
+      }
+      case UP_KEEP:
+      case DOWN_KEEP:
+      case LEFT_KEEP:
+      case RIGHT_KEEP:
+      case UPLEFT_KEEP:
+      case UPRIGHT_KEEP:
+      case DOWNLEFT_KEEP:
+      case DOWNRIGHT_KEEP: {
+        while(TryMove(player, leadAct)) {}
+        break;
+      }
+      case BUFFER_REDRAW: {
         b_flush(buffer);
         break;
-      default:
+      }
+      default: {
         requiresOtherAct = 1;
         break;
+      }
     }
     if(requiresOtherAct) {
       tailAct = getNextInput();

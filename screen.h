@@ -9,7 +9,8 @@ struct __PIXEL{
 
 typedef struct __PIXEL B_PIXEL;
 
-B_PIXEL DEFAULT_PIXEL = {B_DEFAULT_TEXT, B_DEFAULT_COLOR};
+B_PIXEL __PIXEL_DEFAULT = {B_DEFAULT_TEXT, B_DEFAULT_COLOR};
+B_PIXEL __PIXEL_VISION_OBSCURED = {'*', 90};
 
 extern char b_pixEq(const B_PIXEL *a, const B_PIXEL *b) {
   if (a == b) return 1;
@@ -26,7 +27,7 @@ typedef struct __BUFFER B_BUFFER;
 extern void b_factory(B_BUFFER* buffer) {
   buffer->initialized = 1;
   for (int iter = 0; iter < S_LENGTH; iter++)
-    buffer->array[iter] = &DEFAULT_PIXEL;
+    buffer->array[iter] = &__PIXEL_DEFAULT;
 }
 
 extern void b_discard(B_BUFFER *buffer) {
@@ -78,6 +79,11 @@ extern void s_putCursor(const int row, const int col) {
 }
 
 extern void s_clearScreen() {
+  HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD dwMode;
+  GetConsoleMode(hOutput, &dwMode);
+  dwMode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  SetConsoleMode(hOutput, dwMode);
   fputs("\033[3J\033[2J", stdout);
   fflush(stdout);
 }

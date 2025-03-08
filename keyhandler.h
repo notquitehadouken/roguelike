@@ -4,6 +4,7 @@
 #include <termios.h>
 #else
 #include <conio.h>
+#include <windows.h>
 #endif
 #define MAX_STR_LEN 64
 
