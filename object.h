@@ -1,6 +1,10 @@
 // Deleted and rewritten, August 30
 #pragma once
-#include "generation.h"
+#define CONTAINERCAPACITY 65536
+#define GAMETOTALMAPS 256
+#define MAP_WIDTH 160
+#define MAP_HEIGHT 35
+#define MAP_LENGTH MAP_WIDTH*MAP_HEIGHT
 
 int __UID = 0;
 
@@ -113,8 +117,8 @@ extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, E
 	GetDataFlag(MAP, FLAG_CONTAINER, (void**)&ELIST);
 	if (!ELIST)
 		return 0;
-	ENTITY **list = calloc(CONTAINERCAPACITY, sizeof(ENTITY*));
-	*count = 0;
+	ENTITY **list = malloc(CONTAINERCAPACITY * sizeof(ENTITY*));
+  *count = 0;
 	for (int i = 0; i < CONTAINERCAPACITY; i++) {
 		if (!ELIST[i])
 			break;
@@ -123,15 +127,18 @@ extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, E
 		int _, x, y;
 		ConvertToZXY(*pos, &_, &x, &y);
 		if (x == X && y == Y) {
-			list[i] = ELIST[i];
-			*count++;
+			list[(*count)++] = ELIST[i];
 		}
 	}
-	ENTITY **nList = calloc(*count, sizeof(ENTITY*));
-	for (int i = 0; i < *count; i++) {
-		nList[i] = list[i];
-	}
+  ENTITY **nList = calloc(*count, sizeof(ENTITY*));
+  for (int i = 0; i < *count; i++) {
+    nList[i] = list[i];
+  }
 	*out = nList;
-	free(list);
+  free(list);
 	return 1;
+}
+
+extern char InBounds(const int X, const int Y) {
+  return X >= 0 && Y >= 0 && X < MAP_WIDTH && Y < MAP_HEIGHT;
 }

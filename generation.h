@@ -1,7 +1,4 @@
 #pragma once
-#define CONTAINERCAPACITY 65536
-#define GAMETOTALMAPS 256
-#include "object.h"
 
 extern void addEntToContainer(ENTITY *container, ENTITY *ent) {
 	ENTITY **ELIST; // (-1) [cursed]
@@ -77,6 +74,19 @@ extern void generateGame(ENTITY **out) {
 		ConvertToPosDat(1, x, y, P);
 		SetDataFlag(floorTile, FLAG_POS, P);
 		addEntToContainer(map, floorTile);
+    if (x % 10 && y % 2) {
+      ENTITY *wall;
+      CreateEntity(&wall);
+      B_PIXEL *wallPixel = malloc(sizeof(wallPixel));
+      wallPixel->text = '#';
+      wallPixel->color = 39;
+      SetDataFlag(wall, FLAG_APPEARANCE, wallPixel);
+      unsigned int *WALLP = malloc(sizeof(unsigned int));
+      ConvertToPosDat(2, x, y, WALLP);
+      SetDataFlag(wall, FLAG_POS, WALLP);
+      SetBoolFlag(wall, BFLAG_COLLIDABLE);
+      addEntToContainer(map, wall);
+    }
 	}
 	ENTITY *playerEnt;
 	CreateEntity(&playerEnt);
