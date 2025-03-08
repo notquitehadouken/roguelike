@@ -16,7 +16,7 @@ B_PIXEL DEFAULT_PIXEL = {B_DEFAULT_TEXT, B_DEFAULT_COLOR};
 
 extern char b_pixEq(const B_PIXEL *a, const B_PIXEL *b) {
   if (a == b) return 1;
-  return ((a->text <= ' ' || a->text >= 127) && (b->text <= ' ' || b->text >= 127)) || (a->text == b->text && a->color == b->color);
+  return (a->text == b->text && a->color == b->color);
 }
 
 struct __BUFFER{
@@ -97,7 +97,7 @@ extern void b_draw(const B_BUFFER* buffer) {
     char lastChanged = 0;
     char lastBufferEnd = 0;
     char lastColor = 0;
-    char writeColumn = -1;
+    int writeColumn = -1;
     for (int col = 0; col < S_COL; col++) {
       B_PIXEL *pixel, *curpixel;
       b_getPixel(buffer, row, col, &pixel);
@@ -105,6 +105,7 @@ extern void b_draw(const B_BUFFER* buffer) {
       if (b_pixEq(pixel, curpixel) || col == S_COL - 1) {
         if (lastChanged) {
           s_putCursor(row, writeColumn);
+          lastChanged = 0;
           writeColumn = -1;
           fputs(sBuffer + lastBufferEnd, stdout);
           lastBufferEnd = strlen(sBuffer);
@@ -152,7 +153,7 @@ extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {
     ConvertToZXY(*posDat, &z, &x, &y);
     if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT)
       continue;
-    const int index = x + y * S_ROW;
+    const int index = x + y * S_COL;
     if (drawn[index] > z)
       continue;
     drawn[index] = z;
