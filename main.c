@@ -53,14 +53,6 @@ void runGame(ENTITY *game) {
     if (gotMap) {
       b_writeMapToBuffer(buffer, map);
     }
-    char *format = malloc(32);
-    unsigned int *P;
-    GetDataFlag(player, FLAG_POS, (void**)&P);
-    int x, y;
-    ConvertToZXY(*P, &x, &x, &y);
-    sprintf(format, "%d, %d......", x, y);
-    b_writeTo(buffer, 1, 0, format);
-    free(format);
     b_draw(buffer);
     s_putCursor(S_ROW, S_COL - 5);
     leadAct = getNextInput();

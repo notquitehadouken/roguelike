@@ -102,7 +102,7 @@ extern void b_draw(const B_BUFFER* buffer) {
       B_PIXEL *pixel, *curpixel;
       b_getPixel(buffer, row, col, &pixel);
       b_getPixel(curbuffer, row, col, &curpixel);
-      if (b_pixEq(pixel, curpixel) || col == S_COL - 1) {
+      if (b_pixEq(pixel, curpixel)) {
         if (lastChanged) {
           s_putCursor(row, writeColumn);
           lastChanged = 0;
@@ -122,6 +122,10 @@ extern void b_draw(const B_BUFFER* buffer) {
       }
       sprintf(sBuffer + strlen(sBuffer), "%c", pixel->text);
       b_setPixel(curbuffer, row, col, pixel);
+    }
+    if (lastChanged) {
+      s_putCursor(row, writeColumn);
+      fputs(sBuffer + lastBufferEnd, stdout);
     }
     free(sBuffer);
     fputs("\033[0m", stdout);
