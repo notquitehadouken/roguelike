@@ -34,7 +34,6 @@ extern void b_factory(B_BUFFER* buffer) {
 
 extern void b_discard(B_BUFFER *buffer) {
   if (!buffer->initialized) return; // What?
-  free(buffer->array);
   free(buffer);
 }
 
@@ -95,36 +94,30 @@ extern void b_draw(const B_BUFFER* buffer) {
   }
   for (int row = 0; row < S_ROW; row++) {
     char *sBuffer = calloc(16 * S_COL, sizeof(char));
-    char tryPrint = 0;
-    int startColumn = -1;
-    int lastEnd = 0;
+    char lastChanged = 0;
+    char lastBufferEnd = 0;
     char lastColor = 0;
+    char writeColumn = -1;
     for (int col = 0; col < S_COL; col++) {
       B_PIXEL *pixel, *curpixel;
       b_getPixel(buffer, row, col, &pixel);
       b_getPixel(curbuffer, row, col, &curpixel);
-      if (b_pixEq(pixel, curpixel)) {
-        if (tryPrint) {
-          tryPrint = 0;
-          s_putCursor(row, startColumn);
-          startColumn = -1;
-          fputs(sBuffer + lastEnd, stdout);
+      if (b_pixEq(pixel, curpixel) || col == S_COL - 1) {
+        if (lastChanged) {
+          s_putCursor(row, writeColumn);
+          writeColumn = -1;
+          fputs(sBuffer + lastBufferEnd, stdout);
+          lastBufferEnd = strlen(sBuffer);
         }
         continue;
       }
-      if (col == S_COL - 1 && tryPrint) {
-        s_putCursor(row, startColumn);
-        startColumn = -1;
-        fputs(sBuffer + lastEnd, stdout);
-      }
-      tryPrint = 1;
-      if (startColumn == -1) {
-        lastEnd = strlen(sBuffer);
-        startColumn = col;
+      lastChanged = 1;
+      if (writeColumn == -1) {
+        writeColumn = col;
       }
       if (lastColor != pixel->color) {
-        sprintf(sBuffer + strlen(sBuffer), "\033[0m\033[%im", pixel->color);
         lastColor = pixel->color;
+        sprintf(sBuffer + strlen(sBuffer), "\033[0m\033[%dm", lastColor);
       }
       sprintf(sBuffer + strlen(sBuffer), "%c", pixel->text);
       b_setPixel(curbuffer, row, col, pixel);

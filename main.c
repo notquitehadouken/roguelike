@@ -55,7 +55,7 @@ void runGame(ENTITY *game) {
     }
     char *format = malloc(32);
     unsigned int *P;
-    GetDataFlag(player, FLAG_POS, &P);
+    GetDataFlag(player, FLAG_POS, (void**)&P);
     int x, y;
     ConvertToZXY(*P, &x, &x, &y);
     sprintf(format, "%d, %d......", x, y);
