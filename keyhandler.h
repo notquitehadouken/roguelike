@@ -12,8 +12,8 @@ void setUnbuffered() {
 }
 #endif
 
-int __I;
-char __getc(int* out) {
+int l_I;
+char getck(int* out) {
     char c = 0;
 #ifdef USING_TERMIOS
     setUnbuffered();
@@ -25,8 +25,8 @@ char __getc(int* out) {
     return *out;
 }
 
-extern int __setc(const int set) {
-    __I = set;
+extern int setck(const int set) {
+    l_I = set;
     return set;
 };
 
@@ -76,32 +76,32 @@ enum INPUT{
 };
 
 extern int getNextInput() {
-    __getc(&__I);
-    switch(__I) {
+    getck(&l_I);
+    switch(l_I) {
         case 0x1B: // Escape, so it must be arrow keys.
-            __getc(&__I);
-            switch(__I) {
+            getck(&l_I);
+            switch(l_I) {
                 case '[':
                     break;
             	case 'B':
 				case 'b':
-					return __setc(BUFFER_REDRAW);
+					return setck(BUFFER_REDRAW);
 			}
-			__getc(&__I); // Read direction
-			switch(__I) {
+			getck(&l_I); // Read direction
+			switch(l_I) {
 				case 'A':
-					return __setc(UP);
+					return setck(UP);
 				case 'B':
-					return __setc(DOWN);
+					return setck(DOWN);
 				case 'C':
-					return __setc(RIGHT);
+					return setck(RIGHT);
 				case 'D':
-					return __setc(LEFT);
+					return setck(LEFT);
 				default:
-					return __setc(FAIL); // What have you done?
+					return setck(FAIL); // What have you done?
 			}
 		default:
-			return __I;
+			return l_I;
 	}
 }
 

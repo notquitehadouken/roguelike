@@ -5,7 +5,7 @@ unsigned long long RANDOM_SEED = 0x8F52B09AA4510DC5;
 extern void random_scramble(long long variantize) {
     RANDOM_SEED = ~RANDOM_SEED;
     RANDOM_SEED ^= variantize;
-    RANDOM_SEED ^= RANDOM_SEED >> sizeof(RANDOM_SEED) * 4;
+    RANDOM_SEED ^= RANDOM_SEED >> sizeof(RANDOM_SEED) * 4 - 1;
     RANDOM_SEED ^= RANDOM_SEED << sizeof(RANDOM_SEED) * 3;
     RANDOM_SEED ^= (long long)&variantize << sizeof(RANDOM_SEED) * 2;
 }
@@ -13,13 +13,6 @@ extern void random_scramble(long long variantize) {
 extern int random_nextInt() {
     random_scramble(0x1234fedc5678ba98);
     return RANDOM_SEED;
-}
-
-extern float random_nextFloat() {
-    random_scramble(0x1248f36b5a7d9cde);
-    int m = RANDOM_SEED;
-    float j = *(float*)&m;
-    return j;
 }
 
 extern void addEntToContainer(ENTITY *container, ENTITY *ent) {

@@ -4,9 +4,9 @@
 #define CONTAINERCAPACITY 65536
 #define GAMETOTALMAPS 256
 
-int __UID = 0;
+int GLOBAL_UID = 0;
 
-enum __ENTDATAFLAGS {
+enum ENTDATAFLAGS {
     FLAG_PLACE = 0, // current life stage (int)
     FLAG_NAME, // names of entities, player name for games (char*)
     FLAG_APPEARANCE, // screens for games, colors for objects (char[2]*)
@@ -19,7 +19,7 @@ enum __ENTDATAFLAGS {
     FLAG_HEALTH, // health and maximum health (int[2]*)
 };
 
-enum __ENTBOOLFLAGS {
+enum ENTBOOLFLAGS {
     BFLAG_INIT = 0, // this entity is initialized
     BFLAG_ISMAP, // this entity is a map
     BFLAG_COLLIDABLE, // this entity is collided with when walking
@@ -28,7 +28,7 @@ enum __ENTBOOLFLAGS {
     BFLAG_NORENDER, // do not render this entity
 };
 
-struct __ENT{
+struct ENT{
     void *data[sizeof(unsigned long long) * 8];
     unsigned long long dataflag;
     unsigned long long boolflag;
@@ -36,7 +36,7 @@ struct __ENT{
     char destroyed;
 };
 
-typedef struct __ENT ENTITY;
+typedef struct ENT ENTITY;
 
 extern void ConvertToZXY(const unsigned int position, int *Z, int *X, int *Y) {
     *Z = (position >> 24) & 0xFF;
@@ -103,7 +103,7 @@ extern void CreateEntity(ENTITY **out) { // creates an entity
     E->destroyed = 0;
     E->dataflag = 0;
     E->boolflag = 1;
-    E->uid = ++__UID;
+    E->uid = ++GLOBAL_UID;
     for (int i = 0; i < sizeof(unsigned long long) * 8; i++) {
         E->data[i] = 0;
     }
