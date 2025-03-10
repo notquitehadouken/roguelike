@@ -93,6 +93,12 @@ extern void generateGame(ENTITY **out) {
 			RANDOM_SEED ^= (long long)floorPixel;
 			RANDOM_SEED = (RANDOM_SEED >> sizeof(RANDOM_SEED) * 2) ^ (RANDOM_SEED << 11);
 			RANDOM_SEED ^= ~(long long)floorTile;
+			if (random_nextInt() % 10 == 10) {
+				floorPixel->color = 91;
+				int *HC = malloc(sizeof(int));
+				*HC = -1;
+				SetDataFlag(floorTile, FLAG_CHANGE_HP_ON_STEP, HC);
+			}
 			if (x > 3 && y > 3 && !(RANDOM_SEED & 0b111)) {
 				ENTITY *wall;
 				CreateEntity(&wall);
@@ -107,16 +113,25 @@ extern void generateGame(ENTITY **out) {
 				addEntToContainer(map, wall);
 			}
 		}
+
 	ENTITY *playerEnt;
 	CreateEntity(&playerEnt);
 	SetDataFlag(playerEnt, FLAG_NAME, "Player");
+
 	B_PIXEL *PX = malloc(sizeof(PX));
 	PX->text = '@';
 	PX->color = 31;
 	SetDataFlag(playerEnt, FLAG_APPEARANCE, PX);
+
 	unsigned int *PlayerPos = malloc(sizeof(unsigned int));
 	*PlayerPos = 0xFF000000;
-	SetDataFlag(playerEnt, FLAG_POS, (void*)PlayerPos);
+	SetDataFlag(playerEnt, FLAG_POS, PlayerPos);
+
+	int *HP = malloc(2 * sizeof(int));
+	HP[0] = 100;
+	HP[1] = 150;
+	SetDataFlag(playerEnt, FLAG_HEALTH, HP);
+
 	SetDataFlag(game, FLAG_PLAYER, playerEnt);
 	addEntToContainer(map, playerEnt);
 	B_BUFFER *buffer;

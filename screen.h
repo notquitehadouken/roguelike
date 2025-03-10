@@ -63,7 +63,7 @@ extern void b_setPixel(B_BUFFER *buffer, const int row, const int col, B_PIXEL *
 extern void b_writeToColor(B_BUFFER *buffer, const int row, const int col, const char *text, char color) {
     const int index = b_getIndex(row, col);
     for (int i = 0; text[i]; i++) {
-        B_PIXEL *P = malloc(2);
+        B_PIXEL *P = malloc(2 * sizeof(char));
         P->text = text[i];
         P->color = color;
         __WRITE(buffer, index + i, P);
@@ -170,5 +170,29 @@ extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {
 		B_PIXEL *pixel;
 		GetDataFlag(ent, FLAG_APPEARANCE, (void**)&pixel);
 		b_setPixel(buffer, y + 2, x, pixel);
+	}
+}
+
+extern void b_writeHudToBuffer(B_BUFFER *buffer, const ENTITY *player) {
+	int *HP;
+
+	GetDataFlag(player, FLAG_HEALTH, (void**)&HP);
+
+	if (HP) {
+		char *HPText = calloc(64, sizeof(char));
+		sprintf(HPText, "%d", HP[1]);
+		int HPLen = strlen(HPText);
+		free(HPText);
+		HPText = calloc(HPLen * 2 + 4, sizeof(char));
+		sprintf(HPText, "%d", HP[0]);
+		for (int i = 0; i <= HPLen; i ++) {
+			if (HPText[i] <= ' ')
+				HPText[i] = ' ';
+		}
+		sprintf(HPText + HPLen, " / %d", HP[1]);
+
+		b_writeToColor(buffer, S_ROW - 1, 1, HPText, 31);
+
+		free(HPText);
 	}
 }

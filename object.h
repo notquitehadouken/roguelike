@@ -10,13 +10,14 @@ enum ENTDATAFLAGS {
     FLAG_PLACE = 0, // current life stage (int)
     FLAG_NAME, // names of entities, player name for games (char*)
     FLAG_APPEARANCE, // screens for games, colors for objects (char[2]*)
-    FLAG_POS, // positions for entities (0xZZXXXYYY)
+    FLAG_POS, // positions for entities (0xZZXXXYYY, int*)
     FLAG_CONTAINER, // entities this entity contains (ENTITY**)
     FLAG_CONTAINEDBY, // reverse of FLAG_CONTAINER (ENTITY*)
     FLAG_MAPS, // map list for games (ENTITY**)
     FLAG_CONTROLS, // controller for entities (void*)
     FLAG_PLAYER, // current player entity in a game (ENTITY*)
     FLAG_HEALTH, // health and maximum health (int[2]*)
+    FLAG_CHANGE_HP_ON_STEP, // int*
 };
 
 enum ENTBOOLFLAGS {

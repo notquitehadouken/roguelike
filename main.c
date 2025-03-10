@@ -34,7 +34,7 @@ void runIntro(ENTITY *game) {
     SetDataFlag(game, FLAG_NAME, &PlayerName);
     int *place = malloc(sizeof(int));
     *place = PLAYING;
-    SetDataFlag(game, FLAG_PLACE, (void*)place);
+    SetDataFlag(game, FLAG_PLACE, place);
 }
 
 void runGame(ENTITY *game) {
@@ -63,6 +63,7 @@ void runGame(ENTITY *game) {
         if (gotMap) {
             b_writeMapToBuffer(buffer, map);
         }
+    	b_writeHudToBuffer(buffer, player);
         b_draw(buffer);
         s_putCursor(S_ROW, S_COL - 5);
         leadAct = getNextInput();

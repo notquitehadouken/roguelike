@@ -81,6 +81,11 @@ extern char Collide(ENTITY *Collider, const ENTITY *CollidedWith) {
 }
 
 extern char OnWalkOver(ENTITY *Walker, ENTITY *WalkedOver) {
+    if (HasDataFlag(WalkedOver, FLAG_CHANGE_HP_ON_STEP)) {
+        int *HC;
+        GetDataFlag(WalkedOver, FLAG_CHANGE_HP_ON_STEP, (void**)&HC);
+        ChangeHealth(Walker, *HC);
+    }
     return 0;
 }
 
