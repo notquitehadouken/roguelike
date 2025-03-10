@@ -5,6 +5,16 @@
 
 unsigned long long GLOBAL_TIMER = 0; // 256 is considered "One second"
 
+#if defined __unix__ || defined __APPLE__ && defined __MACH__
+#define __USING_TERMIOS
+#include <termios.h>
+#else
+#define __USING_CONIO
+#include <conio.h>
+#define __USING_WINDOWS
+#include <windows.h>
+#endif
+
 #include "gamestate.h"
 #include "keyhandler.h"
 #include "object.h"

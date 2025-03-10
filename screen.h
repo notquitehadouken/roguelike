@@ -79,11 +79,13 @@ extern void s_putCursor(const int row, const int col) {
 }
 
 extern void s_clearScreen() {
+#ifdef __USING_WINDOWS
   HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
   DWORD dwMode;
   GetConsoleMode(hOutput, &dwMode);
   dwMode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
   SetConsoleMode(hOutput, dwMode);
+#endif
   fputs("\033[3J\033[2J", stdout);
   fflush(stdout);
 }
@@ -142,14 +144,15 @@ extern void b_flush(B_BUFFER *buffer) { // Triggers a full redraw of the screen
   if (curbuffer == NULL || !curbuffer->initialized) {
     b_initialize(&curbuffer);
   }
-  b_factory(buffer);
+  b_factory(curbuffer);
+  s_clearScreen();
+  b_draw(buffer);
 }
 
 extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {
   unsigned char drawn[MAP_LENGTH];
   for (int i = 0; i < MAP_LENGTH; i++)
     drawn[i] = 0;
-
   ENTITY **ELIST;
   GetDataFlag(map, FLAG_CONTAINER, (void**)&ELIST);
   for (int i = 0; ELIST[i]; i++) {

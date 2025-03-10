@@ -1,11 +1,4 @@
 #pragma once
-#if defined __unix__ || defined __APPLE__ && defined __MACH__
-#define __USING_TERMIOS
-#include <termios.h>
-#else
-#include <conio.h>
-#include <windows.h>
-#endif
 #define MAX_STR_LEN 64
 
 #ifdef __USING_TERMIOS
