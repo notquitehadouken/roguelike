@@ -191,7 +191,35 @@ extern void b_writeHudToBuffer(B_BUFFER *buffer, const ENTITY *player) {
 		}
 		sprintf(HPText + HPLen, " / %d", HP[1]);
 
-		b_writeToColor(buffer, S_ROW - 1, 1, HPText, 31);
+		char color = 37;
+		const int ratio = HP[0] * 5 / HP[1];
+		switch (ratio) {
+			case 0: {
+				color = 7;
+				break;
+			}
+			case 1: {
+				color = 31;
+				break;
+			}
+			case 2: {
+				color = 33;
+				break;
+			}
+			case 3: {
+				color = 32;
+				break;
+			}
+			case 4: {
+				color = 36;
+				break;
+			}
+			default: {
+				color = 37;
+				break;
+			}
+		}
+		b_writeToColor(buffer, S_ROW - 1, 1, HPText, color);
 
 		free(HPText);
 	}

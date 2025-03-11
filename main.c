@@ -80,8 +80,8 @@ void runGame(ENTITY *game) {
 					SetDataFlag(game, FLAG_PLACE, &place);
 					return;
 				}
+				break;
 			}
-			break;
 			case UP:
 			case DOWN:
 			case LEFT:
