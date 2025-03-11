@@ -140,13 +140,41 @@ extern void b_draw(const B_BUFFER* buffer) {
 	fflush(stdout);
 }
 
-extern void b_flush(B_BUFFER *buffer) { // Triggers a full redraw of the screen
+extern void b_flush(const B_BUFFER *buffer) { // Triggers a full redraw of the screen
 	if (curbuffer == NULL || !curbuffer->initialized) {
 		b_initialize(&curbuffer);
 	}
 	b_factory(curbuffer);
 	s_clearScreen();
 	b_draw(buffer);
+}
+
+extern char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
+	char *occluded = calloc(MAP_LENGTH, sizeof(char));
+	ENTITY **ELIST;
+	GetDataFlag(map, FLAG_CONTAINER, (void**)&ELIST);
+	for (int i = 0; i < CONTAINERCAPACITY; i++) {
+		if (!ELIST[i])
+			break;
+		int x, y;
+		unsigned int *pos;
+		GetDataFlag(ELIST[i], FLAG_POS, (void**)&pos);
+		ConvertToZXY(*pos, &x, &x, &y);
+		if (occluded[x + y * S_COL])
+			continue;
+		if (HasBoolFlag(ELIST[i], BFLAG_OCCLUDING))
+			occluded[x + y * S_COL] = 1;
+	}
+	int x, y;
+	unsigned int *playerPos;
+	GetDataFlag(player, FLAG_POS, (void**)&playerPos);
+	ConvertToZXY(*playerPos, &x, &x, &y);
+	for (int oX = 0; oX < MAP_WIDTH; oX++) {
+		for (int oY = 0; oY < MAP_HEIGHT; oY++) {
+
+		}
+	}
+	return occluded;
 }
 
 extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {

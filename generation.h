@@ -15,6 +15,58 @@ extern int random_nextInt() {
     return RANDOM_SEED;
 }
 
+extern int **createLine(const int x, const int y, int *outCount) { // Draws a line from 0, 0
+	if (x > 0 && y > 0 && x <= y) {
+		int **all = calloc(x + 2, sizeof(int*));
+		int D = 2 * x - y;
+		int Y = 0;
+		for (int i = 0; i < x; i++) {
+			int *p = calloc(2, sizeof(int));
+			all[i] = p;
+			p[0] = x;
+			p[1] = Y;
+			if (D > 0) {
+				Y++;
+				D -= 2 * x;
+			}
+			D += 2 * y;
+		}
+		return all;
+	}
+	if (x == 0 && y == 0) {
+		int **all = malloc(sizeof(int*));
+		all[0] = calloc(2, sizeof(int));
+		all[0][0] = 0;
+		all[0][1] = 0;
+		*outCount = 1;
+		return all;
+	}
+	if (x < 0) {
+		int **all = createLine(-x, y, outCount);
+		for (int i = 0; i < *outCount; i++) {
+			all[i][0] *= -1;
+		}
+		return all;
+	}
+	if (y < 0) {
+		int **all = createLine(x, -y, outCount);
+		for (int i = 0; i < *outCount; i++) {
+			all[i][1] *= -1;
+		}
+		return all;
+	}
+	if (x > y) {
+		int **all = createLine(y, x, outCount);
+		for (int i = 0; i < *outCount; i++) {
+			const int t = all[i][0];
+			all[i][0] = all[i][1];
+			all[i][1] = t;
+		}
+		return all;
+	}
+	return 0; // You've broken something
+}
+
 extern void addEntToContainer(ENTITY *container, ENTITY *ent) {
     ENTITY **ELIST; // (-1) [cursed]
     GetDataFlag(container, FLAG_CONTAINER, (void**)&ELIST);

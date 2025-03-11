@@ -27,6 +27,7 @@ enum ENTBOOLFLAGS {
     BFLAG_DESTRUCTIBLE, // this entity is destroyed when its health hits 0
     BFLAG_INVISIBLE, // this entity is invisible to you and ai
     BFLAG_NORENDER, // do not render this entity
+    BFLAG_OCCLUDING, // this entity blocks light
 };
 
 struct ENT{
@@ -129,13 +130,13 @@ extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, E
 			list[(*count)++] = ELIST[i];
 		}
 	}
-  ENTITY **nList = calloc(*count, sizeof(ENTITY*));
-  for (int i = 0; i < *count; i++) {
-    nList[i] = list[i];
-  }
-	*out = nList;
-  free(list);
-	return 1;
+    ENTITY **nList = calloc(*count, sizeof(ENTITY*));
+    for (int i = 0; i < *count; i++) {
+        nList[i] = list[i];
+    }
+    *out = nList;
+    free(list);
+    return 1;
 }
 
 extern char InBounds(const int X, const int Y) {
