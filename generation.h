@@ -79,18 +79,12 @@ extern void generateGame(ENTITY **out) {
 			RANDOM_SEED = (RANDOM_SEED >> sizeof(RANDOM_SEED) * 2) ^ (RANDOM_SEED << 11);
 			RANDOM_SEED ^= ~(long long)floorTile;
 			if (random_nextInt() % 10 == 9) {
-				floorPixel->color = 91;
 				int *HC = malloc(sizeof(int));
-				*HC = -1;
+				*HC = random_nextInt() % 7 - 3;
+				floorPixel->color = 94 + *HC;
 				SetDataFlag(floorTile, FLAG_CHANGE_HP_ON_STEP, HC);
 			}
-			else if (random_nextInt() % 15 == 1) {
-				floorPixel->color = 92;
-				int *HC = malloc(sizeof(int));
-				*HC = 1;
-				SetDataFlag(floorTile, FLAG_CHANGE_HP_ON_STEP, HC);
-			}
-			if (x > 3 && y > 3 && !(RANDOM_SEED & 0b111)) {
+			if (x == 10 && y == 10) {
 				ENTITY *wall;
 				CreateEntity(&wall);
 				B_PIXEL *wallPixel = malloc(sizeof(wallPixel));

@@ -169,6 +169,8 @@ extern unsigned char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
 	ConvertToZXY(*playerPos, &x, &x, &y);
 	for (int oX = 0; oX < MAP_WIDTH; oX++) {
 		for (int oY = 0; oY < MAP_HEIGHT; oY++) {
+			if (occluded[oX + oY * S_COL] & 0b10)
+				continue;
 			int count;
 			int **line = createLine(oX - x, oY - y, &count);
 			for (int i = 0; i < count - 1; i ++) {
@@ -176,6 +178,7 @@ extern unsigned char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
 				const int lY = line[i][1] + y;
 				if (occluded[lX + lY * S_COL] & 0b1) {
 					occluded[oX + oY * S_COL] |= 0b10;
+					break;
 				}
 			}
 			free(line);
@@ -192,8 +195,10 @@ extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map, const ENTITY
 	unsigned char *occluded = b_getOccluded(map, player);
 	GetDataFlag(map, FLAG_CONTAINER, (void**)&ELIST);
 	for (int i = 0; ELIST[i]; i++) {
-		int z, x, y;
 		const ENTITY *ent = ELIST[i];
+		if (HasBoolFlag(ent, BFLAG_NORENDER))
+			continue;
+		int z, x, y;
 		unsigned int *posDat;
 		GetDataFlag(ent, FLAG_POS, (void**)&posDat);
 		ConvertToZXY(*posDat, &z, &x, &y);
