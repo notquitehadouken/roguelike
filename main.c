@@ -15,6 +15,7 @@ unsigned long long GLOBAL_TIMER = 0; // 256 is considered "One second"
 #include <windows.h>
 #endif
 
+#include "global.h"
 #include "gamestate.h"
 #include "keyhandler.h"
 #include "object.h"
@@ -61,7 +62,7 @@ void runGame(ENTITY *game) {
         }
         GetDataFlag(game, FLAG_APPEARANCE, (void**)&buffer);
         if (gotMap) {
-            b_writeMapToBuffer(buffer, map);
+            b_writeMapToBuffer(buffer, map, player);
         }
     	b_writeHudToBuffer(buffer, player);
         b_draw(buffer);

@@ -1,72 +1,5 @@
 #pragma once
 
-unsigned long long RANDOM_SEED = 0x8F52B09AA4510DC5;
-
-extern void random_scramble(long long variantize) {
-    RANDOM_SEED = ~RANDOM_SEED;
-    RANDOM_SEED ^= variantize;
-    RANDOM_SEED ^= RANDOM_SEED >> sizeof(RANDOM_SEED) * 4 - 1;
-    RANDOM_SEED ^= RANDOM_SEED << sizeof(RANDOM_SEED) * 3;
-    RANDOM_SEED ^= (long long)&variantize << sizeof(RANDOM_SEED) * 2;
-}
-
-extern int random_nextInt() {
-    random_scramble(0x1234fedc5678ba98);
-    return RANDOM_SEED;
-}
-
-extern int **createLine(const int x, const int y, int *outCount) { // Draws a line from 0, 0
-	if (x > 0 && y > 0 && x <= y) {
-		int **all = calloc(x + 2, sizeof(int*));
-		int D = 2 * x - y;
-		int Y = 0;
-		for (int i = 0; i < x; i++) {
-			int *p = calloc(2, sizeof(int));
-			all[i] = p;
-			p[0] = x;
-			p[1] = Y;
-			if (D > 0) {
-				Y++;
-				D -= 2 * x;
-			}
-			D += 2 * y;
-		}
-		return all;
-	}
-	if (x == 0 && y == 0) {
-		int **all = malloc(sizeof(int*));
-		all[0] = calloc(2, sizeof(int));
-		all[0][0] = 0;
-		all[0][1] = 0;
-		*outCount = 1;
-		return all;
-	}
-	if (x < 0) {
-		int **all = createLine(-x, y, outCount);
-		for (int i = 0; i < *outCount; i++) {
-			all[i][0] *= -1;
-		}
-		return all;
-	}
-	if (y < 0) {
-		int **all = createLine(x, -y, outCount);
-		for (int i = 0; i < *outCount; i++) {
-			all[i][1] *= -1;
-		}
-		return all;
-	}
-	if (x > y) {
-		int **all = createLine(y, x, outCount);
-		for (int i = 0; i < *outCount; i++) {
-			const int t = all[i][0];
-			all[i][0] = all[i][1];
-			all[i][1] = t;
-		}
-		return all;
-	}
-	return 0; // You've broken something
-}
-
 extern void addEntToContainer(ENTITY *container, ENTITY *ent) {
     ENTITY **ELIST; // (-1) [cursed]
     GetDataFlag(container, FLAG_CONTAINER, (void**)&ELIST);
@@ -168,6 +101,7 @@ extern void generateGame(ENTITY **out) {
 				ConvertToPosDat(2, x, y, WALLP);
 				SetDataFlag(wall, FLAG_POS, WALLP);
 				SetBoolFlag(wall, BFLAG_COLLIDABLE);
+				SetBoolFlag(wall, BFLAG_OCCLUDING);
 				addEntToContainer(map, wall);
 			}
 		}

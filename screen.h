@@ -149,8 +149,8 @@ extern void b_flush(const B_BUFFER *buffer) { // Triggers a full redraw of the s
 	b_draw(buffer);
 }
 
-extern char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
-	char *occluded = calloc(MAP_LENGTH, sizeof(char));
+extern int *b_getOccluded(const ENTITY *map, const ENTITY *player) {
+	int *occluded = calloc(MAP_LENGTH, sizeof(int));
 	ENTITY **ELIST;
 	GetDataFlag(map, FLAG_CONTAINER, (void**)&ELIST);
 	for (int i = 0; i < CONTAINERCAPACITY; i++) {
@@ -160,8 +160,6 @@ extern char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
 		unsigned int *pos;
 		GetDataFlag(ELIST[i], FLAG_POS, (void**)&pos);
 		ConvertToZXY(*pos, &x, &x, &y);
-		if (occluded[x + y * S_COL])
-			continue;
 		if (HasBoolFlag(ELIST[i], BFLAG_OCCLUDING))
 			occluded[x + y * S_COL] = 1;
 	}
@@ -171,17 +169,30 @@ extern char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
 	ConvertToZXY(*playerPos, &x, &x, &y);
 	for (int oX = 0; oX < MAP_WIDTH; oX++) {
 		for (int oY = 0; oY < MAP_HEIGHT; oY++) {
-
+			int count;
+			int **line = createLine(oX - x, oY - y, &count);
+			char occludedYet = 0;
+			for (int i = 0; i < count; i ++) {
+				const int lX = line[i][0] + x;
+				const int lY = line[i][1] + y;
+				if (occludedYet) {
+					occluded[lX + lY * S_COL] = 2;
+				}
+				if (occluded[lX + lY * S_COL]) {
+					occludedYet = 1;
+				}
+			}
 		}
 	}
 	return occluded;
 }
 
-extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {
+extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map, const ENTITY *player) {
 	unsigned char drawn[MAP_LENGTH];
 	for (int i = 0; i < MAP_LENGTH; i++)
 		drawn[i] = 0;
 	ENTITY **ELIST;
+	int *occluded = b_getOccluded(map, player);
 	GetDataFlag(map, FLAG_CONTAINER, (void**)&ELIST);
 	for (int i = 0; ELIST[i]; i++) {
 		int z, x, y;
@@ -189,6 +200,10 @@ extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {
 		unsigned int *posDat;
 		GetDataFlag(ent, FLAG_POS, (void**)&posDat);
 		ConvertToZXY(*posDat, &z, &x, &y);
+		if (occluded[x + y * S_COL] == 2) {
+			b_setPixel(buffer, y + 2, x, &PIXEL_DEFAULT);
+			continue;
+		}
 		if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT)
 			continue;
 		const int index = x + y * S_COL;
@@ -199,6 +214,7 @@ extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map) {
 		GetDataFlag(ent, FLAG_APPEARANCE, (void**)&pixel);
 		b_setPixel(buffer, y + 2, x, pixel);
 	}
+	free(occluded);
 }
 
 extern void b_writeHudToBuffer(B_BUFFER *buffer, const ENTITY *player) {
