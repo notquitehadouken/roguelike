@@ -1,4 +1,4 @@
-﻿// Standalone functions that don't require game headers.
+﻿// Various utility functions that don't require game headers.
 #pragma once
 
 unsigned long long RANDOM_SEED = 0x8F52B09AA4510DC5;
