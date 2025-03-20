@@ -1,9 +1,18 @@
-﻿#pragma once
+﻿/// <summary>
+///     This header contains TIMEOF data, which is the amount of time that certain actions take to complete
+///     And also contains all the unwieldy functions that convert between certain types
+///     And handles all entity-entity behavior
+///     It is distinct from global.h in that it requires all other header files in order to function properly
+///     As a consequence, no header files use acts.h
+/// </summary>
+#pragma once
+#include "object.h"
 
 enum TIMEOF_ENUM {
-    TIMEOF_COLLIDE = 32,
-    TIMEOF_SHORTWAIT = 32,
-    TIMEOF_LONGWAIT = 256,
+    TIMEOF_COLLIDE = 32, // The amount of time it takes to walk into something. If that something has no effect, this is not used.
+    TIMEOF_SHORTWAIT = 32, // Time of pressing w (lowercase)
+    TIMEOF_LONGWAIT = 256, // Time of pressing W (uppercase)
+    TIMEOF_MOVEBASIC = 16, // How long it takes to move 1 tile by default
 };
 
 extern void DirToVec2(const char dir, int *outX, int *outY) {
@@ -64,6 +73,47 @@ extern void DirToVec2(const char dir, int *outX, int *outY) {
     }
 }
 
+extern void Vec2ToDir(const int x, const int y, char *outD) {
+    if (x == 0 && y == 0) {
+        *outD = 0;
+        return;
+    }
+    if (x == 0 && y > 0) {
+        *outD = DOWN;
+        return;
+    }
+    if (x == 0 && y < 0) {
+        *outD = UP;
+        return;
+    }
+
+    if (x < 0 && y == 0) {
+        *outD = LEFT;
+        return;
+    }
+    if (x < 0 && y > 0) {
+        *outD = DOWNLEFT;
+        return;
+    }
+    if (x < 0 && y < 0) {
+        *outD = UPLEFT;
+        return;
+    }
+
+    if (x > 0 && y == 0) {
+        *outD = RIGHT;
+        return;
+    }
+    if (x > 0 && y > 0) {
+        *outD = DOWNRIGHT;
+        return;
+    }
+    if (x > 0 && y < 0) {
+        *outD = UPRIGHT;
+        return;
+    }
+}
+
 extern void ChangeHealth(ENTITY *E, const int Change) {
     int *HP;
     GetDataFlag(E, FLAG_HEALTH, (void**)&HP);
@@ -77,7 +127,7 @@ extern void ChangeHealth(ENTITY *E, const int Change) {
 }
 
 extern char Collide(ENTITY *Collider, const ENTITY *CollidedWith) {
-    return (long long)Collider % 2;
+    return 0;
 }
 
 extern char OnWalkOver(ENTITY *Walker, ENTITY *WalkedOver) {
@@ -113,7 +163,8 @@ extern int TryMove(ENTITY* E, const int dir) {
     for (int i = 0; i < count; i++) {
         if (HasBoolFlag(ELIST[i], BFLAG_COLLIDABLE)) {
             if (Collide(E, ELIST[i]) || Collide(ELIST[i], E)) {
-                GLOBAL_TIMER += TIMEOF_COLLIDE;
+                free(ELIST);
+                return TIMEOF_COLLIDE;
             }
             free(ELIST);
             return 0;
@@ -124,6 +175,34 @@ extern int TryMove(ENTITY* E, const int dir) {
     }
     free(ELIST);
     ConvertToPosDat(_, x, y, posDat);
-    GLOBAL_TIMER += 64;
-    return 1;
+    return TIMEOF_MOVEBASIC;
+}
+
+extern void ControllerProcess(ENTITY_CONTROLLER *controller, const ENTITY *game) {
+    switch (controller->type) {
+        default:
+        case CONT_NOACTION:
+        case CONT_DEAD: {
+            break;
+        }
+        case CONT_MOVETOPLAYER: {
+            ENTITY *player;
+            GetDataFlag(game, FLAG_PLAYER, (void**)&player);
+
+            ENTITY *us = controller->associate;
+
+            int pX, pY, uX, uY, *pP, *uP;
+            GetDataFlag(player, FLAG_POS, (void**)&pP);
+            GetDataFlag(us, FLAG_POS, (void**)&uP);
+            if (!pP || !uP)
+                break;
+
+            ConvertToZXY(*pP, &pX, &pX, &pY);
+            ConvertToZXY(*uP, &uX, &uX, &uY);
+
+            int dir;
+            Vec2ToDir(pX - uX, pY - uY, &dir);
+            controller->nextAct += ScaleTime(TryMove(us, dir), us);
+        }
+    }
 }

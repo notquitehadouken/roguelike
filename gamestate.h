@@ -1,5 +1,5 @@
 #pragma once
-#define S_COL 160
+#define S_COL 60
 #define S_ROW 40
 #define S_LENGTH S_ROW*S_COL
 #define MAP_WIDTH S_COL

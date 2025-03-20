@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-unsigned long long GLOBAL_TIMER = 0; // 256 is considered "One second"
-
 #if defined __unix__ || defined __APPLE__ && defined __MACH__
 #define USING_TERMIOS
 #include <termios.h>
@@ -38,6 +36,8 @@ void runIntro(ENTITY *game) {
     SetDataFlag(game, FLAG_PLACE, place);
 }
 
+int actNext = 0;
+
 void runGame(ENTITY *game) {
     B_BUFFER *buffer;
     int leadAct = 0x0;
@@ -67,8 +67,9 @@ void runGame(ENTITY *game) {
     	b_writeHudToBuffer(buffer, player);
         b_draw(buffer);
         s_putCursor(S_ROW, S_COL - 5);
-        leadAct = getNextInput();
-        char requiresOtherAct = 0;
+    	leadAct = actNext;
+    	if (!leadAct)
+			leadAct = getNextInput();
         switch (leadAct) {
 			case FAIL:
 				break;
@@ -91,7 +92,7 @@ void runGame(ENTITY *game) {
 			case UPRIGHT:
 			case DOWNLEFT:
 			case DOWNRIGHT: {
-				TryMove(player, leadAct);
+				GTimeAdvance(TryMove(player, leadAct), player);
 				break;
 			}
 			case UP_KEEP:
@@ -102,7 +103,10 @@ void runGame(ENTITY *game) {
 			case UPRIGHT_KEEP:
 			case DOWNLEFT_KEEP:
 			case DOWNRIGHT_KEEP: {
-				while(TryMove(player, leadAct)) {}
+				if (GTimeAdvance(TryMove(player, leadAct), player))
+					actNext = leadAct;
+				else
+					actNext = 0;
 				break;
 			}
 			case BUFFER_REDRAW: {
@@ -110,13 +114,25 @@ void runGame(ENTITY *game) {
 				break;
 			}
 			default: {
-				requiresOtherAct = 1;
 				break;
 			}
 		}
-		if(requiresOtherAct) {
-			tailAct = getNextInput();
-		}
+
+    	for (int uid = 1;;uid++) {
+    		ENTITY *ent = EntityLookup(uid);
+    		if (!ent)
+    			break;
+
+    		ENTITY_CONTROLLER *Controller;
+    		GetDataFlag(ent, FLAG_CONTROLS, (void**)&Controller);
+    		if (!Controller)
+    			continue;
+
+    		if (Controller->nextAct > GLOBAL_TIMER)
+    			continue;
+
+    		ControllerProcess(Controller, game);
+    	}
 	}
 }
 

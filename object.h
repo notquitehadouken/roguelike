@@ -14,10 +14,11 @@ enum ENTDATAFLAGS {
     FLAG_CONTAINER, // entities this entity contains (ENTITY**)
     FLAG_CONTAINEDBY, // reverse of FLAG_CONTAINER (ENTITY*)
     FLAG_MAPS, // map list for games (ENTITY**)
-    FLAG_CONTROLS, // controller for entities (void)
+    FLAG_CONTROLS, // controller for entities (void). the player lacks a controller.
     FLAG_PLAYER, // current player entity in a game (ENTITY*)
     FLAG_HEALTH, // health and maximum health (int[2]*)
     FLAG_CHANGE_HP_ON_STEP, // int*
+    FLAG_SPEED, // normal speed is 256. lower values mean slower (int*)
 };
 
 enum ENTBOOLFLAGS {
@@ -40,11 +41,26 @@ struct ENT{
 
 typedef struct ENT ENTITY;
 
-struct CONTROLLER {
+enum ENTCONTROLLERTYPE {
+    CONT_NOACTION = 0, // The entity will never do anything
+    CONT_DEAD, // Equivalent to CONT_NOACTION.
+    CONT_MOVETOPLAYER, // Will walk in a straight line towards the player
+};
 
+struct CONTROLLER {
+    ENTITY *associate;
+    int type;
+    unsigned long long nextAct;
 };
 
 typedef struct CONTROLLER ENTITY_CONTROLLER;
+
+extern ENTITY_CONTROLLER *CreateController(const int type) {
+    ENTITY_CONTROLLER *PCont = malloc(sizeof(ENTITY_CONTROLLER*));
+    PCont->associate = 0;
+    PCont->type = type;
+    return PCont;
+}
 
 extern void ConvertToZXY(const unsigned int position, int *Z, int *X, int *Y) {
     *Z = (position >> 24) & 0xFF;
@@ -103,7 +119,7 @@ extern void DestroyEntity(ENTITY *E) {
     E->dataflag = 0;
     E->boolflag = 0;
     E->destroyed = 1;
-    free(E);
+    //free(E); //Entity is not freed.
 }
 
 ENTITY **UID_LOOKUP = 0;
@@ -116,7 +132,7 @@ extern void CreateEntity(ENTITY **out) { // creates an entity
     E->dataflag = 0;
     E->boolflag = 1;
     const int thisUid = ++GLOBAL_UID;
-    E->uid = ++GLOBAL_UID;
+    E->uid = thisUid;
     if (thisUid >= UID_BLOCKS * UID_BLOCKSIZE) {
         if (UID_LOOKUP) {
             ENTITY **NEW_LOOKUP = calloc(UID_BLOCKSIZE * (UID_BLOCKS + 1), sizeof(ENTITY*));
@@ -139,9 +155,12 @@ extern void CreateEntity(ENTITY **out) { // creates an entity
 }
 
 extern ENTITY *EntityLookup(const int uid) { // finds an entity by uid
-    if (!uid)
+    if (!uid || // "Zero" is not an entity
+        uid > UID_BLOCKS * UID_BLOCKSIZE || // Memory fault
+        uid > GLOBAL_UID) // Time travel has not been implemented
         return 0;
 
+    return UID_LOOKUP[uid];
 }
 
 extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, ENTITY ***out, int *count) {
@@ -173,4 +192,33 @@ extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, E
 
 extern char InBounds(const int X, const int Y) {
   return X >= 0 && Y >= 0 && X < MAP_WIDTH && Y < MAP_HEIGHT;
+}
+
+extern void AddController(ENTITY *E, ENTITY_CONTROLLER *Controller) {
+    if (!Controller) {
+        Controller = CreateController(CONT_NOACTION);
+    }
+    SetDataFlag(E, FLAG_CONTROLS, Controller);
+    Controller->associate = E;
+}
+
+unsigned long long GLOBAL_TIMER = 0; // 256 is considered "One second"
+
+int ScaleTime(unsigned long long Time, ENTITY *E) {
+    if (Time == 0 || !E)
+        return Time;
+    int *s;
+    GetDataFlag(E, FLAG_SPEED, (void**)&s);
+    if (!s)
+        return Time;
+    Time *= 256;
+    Time /= *s;
+    return Time;
+}
+
+int GTimeAdvance(const unsigned long long Time, ENTITY *E) {
+    if (!Time)
+        return 0;
+    GLOBAL_TIMER += ScaleTime(Time, E);
+    return 1;
 }

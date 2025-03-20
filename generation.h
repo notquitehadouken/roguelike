@@ -52,6 +52,18 @@ extern void removeContainer(ENTITY *E) {
 	}
 }
 
+extern ENTITY *entFactory(ENTITY *In, int X, int Y, unsigned char Z, char Text, char Color) { // Creates an entity with all required data
+	ENTITY *E;
+	CreateEntity(&E);
+	B_PIXEL *EP = malloc(sizeof(EP));
+	EP->text = Text;
+	EP->color = Color;
+	SetDataFlag(E, FLAG_APPEARANCE, EP);
+	unsigned int *P = malloc(sizeof(unsigned int));
+	ConvertToPosDat(Z, X, Y, P);
+	SetDataFlag(E, FLAG_POS, P);
+}
+
 extern void generateGame(ENTITY **out) {
 	ENTITY *game;
 	CreateEntity(&game);
@@ -83,6 +95,20 @@ extern void generateGame(ENTITY **out) {
 				*HC = random_nextInt() % 7 - 3;
 				floorPixel->color = 94 + *HC;
 				SetDataFlag(floorTile, FLAG_CHANGE_HP_ON_STEP, HC);
+			}
+			if (x >= 20 && y >= 20 && random_nextInt() % 30 == 1) {
+				ENTITY *follower;
+				CreateEntity(&follower);
+				B_PIXEL *followerPixel = malloc(sizeof(followerPixel));
+				followerPixel->text = '@';
+				followerPixel->color = 33;
+				SetDataFlag(follower, FLAG_APPEARANCE, followerPixel);
+				unsigned int *fPos = malloc(sizeof(unsigned int));
+				ConvertToPosDat(3, x, y, fPos);
+				SetDataFlag(follower, FLAG_POS, fPos);
+				SetBoolFlag(follower, BFLAG_COLLIDABLE);
+				AddController(follower, CreateController(CONT_MOVETOPLAYER));
+				addEntToContainer(map, follower);
 			}
 			if (x == 10 && y == 10) {
 				ENTITY *wall;
