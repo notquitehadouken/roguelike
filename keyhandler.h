@@ -25,7 +25,12 @@ char getck(int* out) {
     return *out;
 }
 
-extern int setck(const int set) {
+/**
+ * Sets the current value of l_I
+ * @param set The new value
+ * @return The value of set
+ */
+int setck(const int set) {
     l_I = set;
     return set;
 };
@@ -75,6 +80,10 @@ enum INPUT{
     BUFFER_REDRAW = 0x10B,
 };
 
+/**
+ * Waits for player input and sets l_I to it
+ * @return The inputted key
+ */
 extern int getNextInput() {
     getck(&l_I);
     switch(l_I) {
@@ -105,6 +114,11 @@ extern int getNextInput() {
 	}
 }
 
+/**
+ * Gets input from the user as a string.
+ * Maximum length is MAX_STR_LEN
+ * @param out
+ */
 extern void getStringInput(char **out) {
 	char *str = malloc(MAX_STR_LEN * sizeof(char));
 	char form[16];
@@ -113,6 +127,13 @@ extern void getStringInput(char **out) {
 	*out = str;
 }
 
+/**
+ * Checks if two MAX_STR_LEN strings are equal.
+ * Does not consider case
+ * @param a The first string
+ * @param b The second string
+ * @return If they are equal
+ */
 extern char stringEqCaseless(const char *a, const char *b) {
 	for (int i = 0; i < MAX_STR_LEN; i++) {
 		char tai = a[i];
@@ -129,6 +150,12 @@ extern char stringEqCaseless(const char *a, const char *b) {
 	return 0;
 }
 
+/**
+ * Checks if two MAX_STR_LEN strings are equal
+ * @param a The first string
+ * @param b The second string
+ * @return If they are equal
+ */
 extern char stringEq(const char *a, const char *b) {
 	for (int i = 0; i < MAX_STR_LEN; i++) {
 		if (a[i] != b[i])

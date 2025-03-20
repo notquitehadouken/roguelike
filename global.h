@@ -5,6 +5,10 @@
 
 unsigned long long RANDOM_SEED = 0x8F52B09AA4510DC5;
 
+/**
+ * Scrambles RANDOM_SEED and produces a new value
+ * @param variantize Any number. Used in randomization
+ */
 extern void random_scramble(long long variantize) {
     RANDOM_SEED = ~RANDOM_SEED;
     RANDOM_SEED ^= variantize;
@@ -13,11 +17,22 @@ extern void random_scramble(long long variantize) {
     RANDOM_SEED ^= (long long)&variantize << sizeof(RANDOM_SEED) * 2;
 }
 
+/**
+ * Returns a random integer
+ * @return A random integer
+ */
 extern int random_nextInt() {
     random_scramble(0x1234fedc5678ba98);
     return RANDOM_SEED;
 }
 
+/**
+ * Draws a line using Bresenham's line algorithm
+ * @param x The X position
+ * @param y The Y position
+ * @param outCount How many points are in the return value
+ * @return A list of offsets from 0, 0 that draw a line
+ */
 extern int **createLine(int x, int y, int *outCount) { // Draws a line from 0, 0
     if (x == 0 && y == 0) {
         int **all = malloc(sizeof(int*));

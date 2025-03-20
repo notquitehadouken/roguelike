@@ -15,6 +15,13 @@ enum TIMEOF_ENUM {
     TIMEOF_MOVEBASIC = 16, // How long it takes to move 1 tile by default
 };
 
+/**
+ * Converts a direction constant to X and Y values
+ * Up is considered (0, -1)
+ * @param dir The direction
+ * @param outX The X as output
+ * @param outY The Y as output
+ */
 extern void DirToVec2(const char dir, int *outX, int *outY) {
     switch (dir) {
         case UP_KEEP:
@@ -73,6 +80,12 @@ extern void DirToVec2(const char dir, int *outX, int *outY) {
     }
 }
 
+/**
+ * Converts X and Y to a direction constant
+ * @param x The X
+ * @param y The Y
+ * @param outD The direction constant as output
+ */
 extern void Vec2ToDir(const int x, const int y, char *outD) {
     if (x == 0 && y == 0) {
         *outD = 0;
@@ -114,6 +127,12 @@ extern void Vec2ToDir(const int x, const int y, char *outD) {
     }
 }
 
+/**
+ * Changes the health of an entity cleanly
+ * Positive means healing
+ * @param E The entity
+ * @param Change The change in health
+ */
 extern void ChangeHealth(ENTITY *E, const int Change) {
     int *HP;
     GetDataFlag(E, FLAG_HEALTH, (void**)&HP);
@@ -126,10 +145,22 @@ extern void ChangeHealth(ENTITY *E, const int Change) {
         HP[0] = 0;
 }
 
+/**
+ * The function called when something collides with something else
+ * @param Collider The "colliding" entity
+ * @param CollidedWith The "collided with" entity. This entity is not modified by the function
+ * @return If anything happened
+ */
 extern char Collide(ENTITY *Collider, const ENTITY *CollidedWith) {
     return 0;
 }
 
+/**
+ * The functioned called when something walks on (moves over) something else
+ * @param Walker The entity walking
+ * @param WalkedOver The entity being walked over
+ * @return
+ */
 extern char OnWalkOver(ENTITY *Walker, ENTITY *WalkedOver) {
     if (HasDataFlag(WalkedOver, FLAG_CHANGE_HP_ON_STEP)) {
         int *HC;
@@ -139,6 +170,12 @@ extern char OnWalkOver(ENTITY *Walker, ENTITY *WalkedOver) {
     return 0;
 }
 
+/**
+ * Attempt to move an entity with this direction constant
+ * @param E The entity to be moved
+ * @param dir The direction constant
+ * @return How long movement took. 0 means the movement failed.
+ */
 extern int TryMove(ENTITY* E, const int dir) {
     int desiredDX, desiredDY;
     DirToVec2(dir, &desiredDX, &desiredDY);
@@ -178,6 +215,11 @@ extern int TryMove(ENTITY* E, const int dir) {
     return TIMEOF_MOVEBASIC;
 }
 
+/**
+ * Handles controller logic. Called every game loop for every entity with a controller.
+ * @param controller The controller object
+ * @param game The game object
+ */
 extern void ControllerProcess(ENTITY_CONTROLLER *controller, const ENTITY *game) {
     switch (controller->type) {
         default:

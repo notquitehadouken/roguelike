@@ -108,7 +108,7 @@ extern void b_setPixel(B_BUFFER *buffer, const int row, const int col, B_PIXEL *
 }
 
 /**
-* Writes some colorful text to a buffer
+ * Writes some colorful text to a buffer
  * @param buffer The buffer
  * @param row The row (Y value)
  * @param col The column (X value)
@@ -137,7 +137,8 @@ extern void b_writeTo(B_BUFFER *buffer, const int row, const int col, const char
 }
 
 /**
- * Puts the cursor somewhere. Used in printing
+ * Puts the cursor somewhere.
+ * Used in printing
  * @param row The row (Y value)
  * @param col The column (X value)
  */

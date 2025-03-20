@@ -19,7 +19,8 @@ extern void addEntToContainer(ENTITY *container, ENTITY *ent) {
 }
 
 /**
- * Removes an entity from a container.
+ * Removes an entity from a container
+ * The calling function is expected to find a new place for the entity
  * @param container The container
  * @param ent The entity
  */
@@ -48,6 +49,12 @@ extern void addContainer(ENTITY *E) {
     SetDataFlag(E, FLAG_CONTAINER, LIST);
 }
 
+/**
+ * Removes an entity's container if it has one
+ * Every entity in that container is automatically placed into the parent container of E
+ * They also inherit E's position, assuming they have one.
+ * @param E The entity that will lose its container
+ */
 extern void removeContainer(ENTITY *E) {
     ENTITY **ELIST;
     GetDataFlag(E, FLAG_CONTAINER, (void**)&ELIST);
