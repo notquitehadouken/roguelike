@@ -126,6 +126,9 @@ extern void generateGame(ENTITY **out) {
 				SetBoolFlag(follower, BFLAG_COLLIDABLE);
 				AddController(follower, CreateController(CONT_MOVETOPLAYER));
 				addEntToContainer(map, follower);
+				int *S = malloc(sizeof(S));
+				*S = 128;
+				SetDataFlag(follower, FLAG_SPEED, S);
 			}
 			if (x == 10 && y == 10) {
 				ENTITY *wall = entFactory(map, x, y, 2, '#', 39);

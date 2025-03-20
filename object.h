@@ -68,6 +68,13 @@ extern void ConvertToZXY(const unsigned int position, int *Z, int *X, int *Y) {
     *Y = position & 0xFFF;
 }
 
+/**
+ * Converts Z, X
+ * @param Z
+ * @param X
+ * @param Y
+ * @param out
+ */
 extern void ConvertToPosDat(const int Z, const int X, const int Y, unsigned int *out) {
     *out = Z << (4 * 6) | X << (4 * 3) | Y;
 }
