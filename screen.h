@@ -12,11 +12,20 @@ typedef struct PIXEL B_PIXEL;
 B_PIXEL PIXEL_DEFAULT = {B_DEFAULT_TEXT, B_DEFAULT_COLOR};
 B_PIXEL PIXEL_VISION_OBSCURED = {'*', 90};
 
+/**
+ * Checks if two pixels are equal
+ * @param a First pixel
+ * @param b Second pixel
+ * @return If they are equal
+ */
 extern char b_pixEq(const B_PIXEL *a, const B_PIXEL *b) {
     if (a == b) return 1;
     return (a->text == b->text && a->color == b->color);
 }
 
+/**
+ * A screen buffer.
+ */
 struct BUFFER{
     char initialized;
     B_PIXEL *array[S_LENGTH];
@@ -24,26 +33,50 @@ struct BUFFER{
 
 typedef struct BUFFER B_BUFFER;
 
+/**
+ * Sets the initialized flag to true and forces every pixel in a buffer to be PIXEL_DEFAULT.
+ * @param buffer The buffer
+ */
 extern void b_factory(B_BUFFER* buffer) {
     buffer->initialized = 1;
     for (int iter = 0; iter < S_LENGTH; iter++)
         buffer->array[iter] = &PIXEL_DEFAULT;
 }
 
+/**
+ * Destroys a buffer
+ * @param buffer The buffer
+ */
 extern void b_discard(B_BUFFER *buffer) {
     if (!buffer->initialized) return; // What?
     free(buffer);
 }
 
+/**
+ * Initializes a buffer
+ * @param buffer The buffer
+ */
 extern void b_initialize(B_BUFFER **buffer) {
     *buffer = (B_BUFFER*)malloc(sizeof(B_BUFFER));
     b_factory(*buffer);
 }
 
+/**
+ * Returns the proper index for a buffer
+ * @param row The row (Y value)
+ * @param col The column (X value)
+ * @return The index
+ */
 extern unsigned long b_getIndex(const int row, const int col) {    // so i don't need to write row * S_COL + col 5000 times
     return row * S_COL + col;
 }
 
+/**
+ * Writes a pixel to a buffer
+ * @param buffer The buffer
+ * @param index The index
+ * @param pixel The pixel
+ */
 extern void __WRITE(B_BUFFER *buffer, const int index, B_PIXEL *pixel) {
     if (!buffer->initialized)
         return;
@@ -52,14 +85,36 @@ extern void __WRITE(B_BUFFER *buffer, const int index, B_PIXEL *pixel) {
     buffer->array[index] = pixel;
 }
 
+/**
+ * Gets a pixel from a buffer
+ * @param buffer The buffer
+ * @param row The row (Y value)
+ * @param col The column (X value)
+ * @param out The pixel
+ */
 extern void b_getPixel(const B_BUFFER *buffer, const int row, const int col, B_PIXEL **out) {
     *out = buffer->array[b_getIndex(row, col)];
 }
 
+/**
+ * Sets a pixel to a buffer
+ * @param buffer The buffer
+ * @param row The row (Y value)
+ * @param col The column (X value)
+ * @param pixel The pixel
+ */
 extern void b_setPixel(B_BUFFER *buffer, const int row, const int col, B_PIXEL *pixel) {
     __WRITE(buffer, b_getIndex(row, col), pixel);
 }
 
+/**
+* Writes some colorful text to a buffer
+ * @param buffer The buffer
+ * @param row The row (Y value)
+ * @param col The column (X value)
+ * @param text The text
+ * @param color The color
+ */
 extern void b_writeToColor(B_BUFFER *buffer, const int row, const int col, const char *text, char color) {
     const int index = b_getIndex(row, col);
     for (int i = 0; text[i]; i++) {
@@ -70,14 +125,29 @@ extern void b_writeToColor(B_BUFFER *buffer, const int row, const int col, const
     }
 }
 
+/**
+* Writes some default-color text to a buffer
+ * @param buffer The buffer
+ * @param row The row (Y value)
+ * @param col The column (X value)
+ * @param text The text
+ */
 extern void b_writeTo(B_BUFFER *buffer, const int row, const int col, const char *text) {
     b_writeToColor(buffer, row, col, text, B_DEFAULT_COLOR);
 }
 
+/**
+ * Puts the cursor somewhere. Used in printing
+ * @param row The row (Y value)
+ * @param col The column (X value)
+ */
 extern void s_putCursor(const int row, const int col) {
     fprintf(stdout, "\033[%i;%iH", row+1, col+1);
 }
 
+/**
+ * Clears the entire screen.
+ */
 extern void s_clearScreen() {
 #ifdef __USING_WINDOWS
     HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -92,6 +162,10 @@ extern void s_clearScreen() {
 
 B_BUFFER *curbuffer = {0};
 
+/**
+ * Draws a buffer to the screen
+ * @param buffer The buffer
+ */
 extern void b_draw(const B_BUFFER* buffer) {
     if (curbuffer == NULL || !curbuffer->initialized) {
         s_clearScreen();
@@ -140,6 +214,10 @@ extern void b_draw(const B_BUFFER* buffer) {
 	fflush(stdout);
 }
 
+/**
+ * Forces a full redraw of a buffer
+ * @param buffer The buffer
+ */
 extern void b_flush(const B_BUFFER *buffer) { // Triggers a full redraw of the screen
 	if (curbuffer == NULL || !curbuffer->initialized) {
 		b_initialize(&curbuffer);
@@ -149,6 +227,12 @@ extern void b_flush(const B_BUFFER *buffer) { // Triggers a full redraw of the s
 	b_draw(buffer);
 }
 
+/**
+ * Calculates every position in a map that the player can see
+ * @param map The map
+ * @param player The player entity
+ * @return A MAP_LENGTH list of characters. The 2s place is if it is occluded, the 1s place is if it occludes.
+ */
 extern unsigned char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
 	unsigned char *occluded = calloc(MAP_LENGTH, sizeof(*occluded));
 	ENTITY **ELIST;
@@ -187,12 +271,20 @@ extern unsigned char *b_getOccluded(const ENTITY *map, const ENTITY *player) {
 	return occluded;
 }
 
+/**
+ * Draws an entire map to the buffer.
+ * @param buffer The buffer
+ * @param map The map
+ * @param player The player. Pass NULL to disable occlusion.
+ */
 extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map, const ENTITY *player) {
 	unsigned char drawn[MAP_LENGTH];
 	for (int i = 0; i < MAP_LENGTH; i++)
 		drawn[i] = 0;
 	ENTITY **ELIST;
-	unsigned char *occluded = b_getOccluded(map, player);
+	unsigned char *occluded = 0;
+	if (player)
+		occluded = b_getOccluded(map, player);
 	GetDataFlag(map, FLAG_CONTAINER, (void**)&ELIST);
 	for (int i = 0; ELIST[i]; i++) {
 		const ENTITY *ent = ELIST[i];
@@ -202,7 +294,7 @@ extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map, const ENTITY
 		unsigned int *posDat;
 		GetDataFlag(ent, FLAG_POS, (void**)&posDat);
 		ConvertToZXY(*posDat, &z, &x, &y);
-		if (occluded[x + y * S_COL] & 0b10) {
+		if (player && occluded[x + y * S_COL] & 0b10) {
 			b_setPixel(buffer, y + 2, x, &PIXEL_VISION_OBSCURED);
 			continue;
 		}
@@ -219,6 +311,11 @@ extern void b_writeMapToBuffer(B_BUFFER *buffer, const ENTITY *map, const ENTITY
 	free(occluded);
 }
 
+/**
+ * Draws various snippets of information about the player to a buffer
+ * @param buffer The buffer
+ * @param player The player
+ */
 extern void b_writeHudToBuffer(B_BUFFER *buffer, const ENTITY *player) {
 	int *HP;
 

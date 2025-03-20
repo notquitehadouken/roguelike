@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+ * Adds an entity to a container
+ * @param container The container
+ * @param ent The entity
+ */
 extern void addEntToContainer(ENTITY *container, ENTITY *ent) {
     ENTITY **ELIST; // (-1) [cursed]
     GetDataFlag(container, FLAG_CONTAINER, (void**)&ELIST);
@@ -13,6 +18,11 @@ extern void addEntToContainer(ENTITY *container, ENTITY *ent) {
     }
 }
 
+/**
+ * Removes an entity from a container.
+ * @param container The container
+ * @param ent The entity
+ */
 extern void removeEntFromContainer(ENTITY *container, ENTITY *ent) {
     ENTITY **ELIST; // (-1) [cursed]
     GetDataFlag(container, FLAG_CONTAINER, (void**)&ELIST);
@@ -25,6 +35,10 @@ extern void removeEntFromContainer(ENTITY *container, ENTITY *ent) {
     }
 }
 
+/**
+ * Adds a container to an entity if one does not exist already
+ * @param E The entity
+ */
 extern void addContainer(ENTITY *E) {
     if (HasDataFlag(E, FLAG_CONTAINER))
         return;
@@ -52,7 +66,17 @@ extern void removeContainer(ENTITY *E) {
 	}
 }
 
-extern ENTITY *entFactory(ENTITY *In, int X, int Y, unsigned char Z, char Text, char Color) { // Creates an entity with all required data
+/**
+ * Generates an entity with most required parameters
+ * @param In The entity it should be spawned inside of
+ * @param X X position
+ * @param Y Y position
+ * @param Z Z rendering order
+ * @param Text The text of the entity
+ * @param Color The color of the entity
+ * @return The entity
+ */
+extern ENTITY *entFactory(ENTITY *In, const int X, const int Y, const unsigned char Z, const char Text, const char Color) { // Creates an entity with all required data
 	ENTITY *E;
 	CreateEntity(&E);
 	B_PIXEL *EP = malloc(sizeof(EP));
@@ -62,8 +86,21 @@ extern ENTITY *entFactory(ENTITY *In, int X, int Y, unsigned char Z, char Text, 
 	unsigned int *P = malloc(sizeof(unsigned int));
 	ConvertToPosDat(Z, X, Y, P);
 	SetDataFlag(E, FLAG_POS, P);
+	if (In)
+		addEntToContainer(In, E);
+
+	RANDOM_SEED = ((RANDOM_SEED & 0b1) << (sizeof(RANDOM_SEED) * 8 - 1)) ^ RANDOM_SEED >> 1;
+	RANDOM_SEED ^= (long long)P;
+	RANDOM_SEED = (RANDOM_SEED >> sizeof(RANDOM_SEED) * 2) ^ (RANDOM_SEED << 11);
+	RANDOM_SEED ^= ~(long long)E;
+
+	return E;
 }
 
+/**
+ * Generates a game
+ * @param out The return value
+ */
 extern void generateGame(ENTITY **out) {
 	ENTITY *game;
 	CreateEntity(&game);
@@ -76,50 +113,15 @@ extern void generateGame(ENTITY **out) {
 	SetDataFlag(game, FLAG_MAPS, maps);
 	for (int x = 0; x < MAP_WIDTH; x++)
 		for (int y = 0; y < MAP_HEIGHT; y++) {
-			ENTITY *floorTile;
-			CreateEntity(&floorTile);
-			B_PIXEL *floorPixel = malloc(sizeof(floorPixel));
-			floorPixel->text = '.';
-			floorPixel->color = 30;
-			SetDataFlag(floorTile, FLAG_APPEARANCE, floorPixel);
-			unsigned int *P = malloc(sizeof(unsigned int));
-			ConvertToPosDat(1, x, y, P);
-			SetDataFlag(floorTile, FLAG_POS, P);
-			addEntToContainer(map, floorTile);
-			RANDOM_SEED = ((RANDOM_SEED & 0b1) << (sizeof(RANDOM_SEED) * 8 - 1)) ^ RANDOM_SEED >> 1;
-			RANDOM_SEED ^= (long long)floorPixel;
-			RANDOM_SEED = (RANDOM_SEED >> sizeof(RANDOM_SEED) * 2) ^ (RANDOM_SEED << 11);
-			RANDOM_SEED ^= ~(long long)floorTile;
-			if (random_nextInt() % 10 == 9) {
-				int *HC = malloc(sizeof(int));
-				*HC = random_nextInt() % 7 - 3;
-				floorPixel->color = 94 + *HC;
-				SetDataFlag(floorTile, FLAG_CHANGE_HP_ON_STEP, HC);
-			}
+			entFactory(map, x, y, 1, '.', 30);
 			if (x >= 20 && y >= 20 && random_nextInt() % 30 == 1) {
-				ENTITY *follower;
-				CreateEntity(&follower);
-				B_PIXEL *followerPixel = malloc(sizeof(followerPixel));
-				followerPixel->text = '@';
-				followerPixel->color = 33;
-				SetDataFlag(follower, FLAG_APPEARANCE, followerPixel);
-				unsigned int *fPos = malloc(sizeof(unsigned int));
-				ConvertToPosDat(3, x, y, fPos);
-				SetDataFlag(follower, FLAG_POS, fPos);
+				ENTITY *follower = entFactory(map, x, y, 3, '@', 33);
 				SetBoolFlag(follower, BFLAG_COLLIDABLE);
 				AddController(follower, CreateController(CONT_MOVETOPLAYER));
 				addEntToContainer(map, follower);
 			}
 			if (x == 10 && y == 10) {
-				ENTITY *wall;
-				CreateEntity(&wall);
-				B_PIXEL *wallPixel = malloc(sizeof(wallPixel));
-				wallPixel->text = '#';
-				wallPixel->color = 39;
-				SetDataFlag(wall, FLAG_APPEARANCE, wallPixel);
-				unsigned int *WALLP = malloc(sizeof(unsigned int));
-				ConvertToPosDat(2, x, y, WALLP);
-				SetDataFlag(wall, FLAG_POS, WALLP);
+				ENTITY *wall = entFactory(map, x, y, 2, '#', 39);
 				SetBoolFlag(wall, BFLAG_COLLIDABLE);
 				SetBoolFlag(wall, BFLAG_OCCLUDING);
 				addEntToContainer(map, wall);

@@ -72,10 +72,20 @@ extern void ConvertToPosDat(const int Z, const int X, const int Y, unsigned int 
     *out = Z << (4 * 6) | X << (4 * 3) | Y;
 }
 
+/**
+ * Checks if an entity has a data flag
+ * @param E The entity
+ * @param flag The FLAG flag
+ */
 extern char HasDataFlag(const ENTITY* E, const int flag) {
     return (E->dataflag & (1 << flag)) != 0;
 }
 
+/**
+ * Removes a data flag on an entity
+ * @param E The entity
+ * @param flag The FLAG flag
+ */
 extern void ClearDataFlag(ENTITY *E, const int flag) {
     if (!HasDataFlag(E, flag))
         return;
@@ -83,12 +93,24 @@ extern void ClearDataFlag(ENTITY *E, const int flag) {
     free(E->data[flag]);
 }
 
+/**
+ * Sets a data flag on an entity
+ * @param E The entity
+ * @param flag The FLAG flag
+ * @param value The value
+ */
 extern void SetDataFlag(ENTITY *E, const int flag, void *value) {
     ClearDataFlag(E, flag); // memory leak (tm)
     E->dataflag = E->dataflag | (1 << flag);
     E->data[flag] = value; // Hope you malloc'd.;
 }
 
+/**
+ * Gets a data flag on an entity
+ * @param E The entity
+ * @param flag The FLAG flag
+ * @param out The output
+ */
 extern void GetDataFlag(const ENTITY *E, const int flag, void **out) {
     if (E->dataflag & (1 << flag))
         *out = E->data[flag];
@@ -96,22 +118,49 @@ extern void GetDataFlag(const ENTITY *E, const int flag, void **out) {
         *out = 0;
 }
 
+/**
+ * Clears a bool flag on an entity
+ * @param E The entity
+ * @param flag The BFLAG flag
+ */
 extern void ClearBoolFlag(ENTITY *E, const int flag) {
     E->boolflag &= ~(1 << flag);
 }
 
+/**
+ * Sets a bool flag on an entity
+ * @param E The entity
+ * @param flag The BFLAG flag
+ */
 extern void SetBoolFlag(ENTITY *E, const int flag) {
     E->boolflag |= 1 << flag;
 }
 
+
+/**
+ * Gets if an entity has a certain boolean flag
+ * @param E The entity
+ * @param flag The BFLAG flag
+ * @param out The value of the flag.
+ */
 extern void GetBoolFlag(const ENTITY *E, const int flag, char *out) {
     *out = E->boolflag & 1 << flag;
 }
 
+/**
+ * Checks if an entity has a certain boolean flag
+ * @param E The entity
+ * @param flag The BFLAG flag
+ * @return If it does
+ */
 extern char HasBoolFlag(const ENTITY *E, const int flag) {
     return (E->boolflag & 1 << flag) != 0;
 }
 
+/**
+ * Destroys an entity. The entity is not freed to prevent issues with entity lookups.
+ * @param E The entity
+ */
 extern void DestroyEntity(ENTITY *E) {
     for (int i = 0; i < MAX_STR_LEN; i++) {
         ClearDataFlag(E, i);
@@ -126,6 +175,10 @@ ENTITY **UID_LOOKUP = 0;
 int UID_BLOCKS = 0;
 #define UID_BLOCKSIZE 65536
 
+/**
+ * Creates an entity and initializes all its values
+ * @param out The entity
+ */
 extern void CreateEntity(ENTITY **out) { // creates an entity
     ENTITY *E = malloc(sizeof(ENTITY));
     E->destroyed = 0;
@@ -163,6 +216,15 @@ extern ENTITY *EntityLookup(const int uid) { // finds an entity by uid
     return UID_LOOKUP[uid];
 }
 
+/**
+ * Gets every entity on a certain position in a map
+ * @param MAP The map
+ * @param X The X position
+ * @param Y The Y position
+ * @param out The return value, a pointer to a list of entities
+ * @param count The amount of entities in *out
+ * @return If the operation succeeded
+ */
 extern char GetEntitiesOnPosition(const ENTITY *MAP, const int X, const int Y, ENTITY ***out, int *count) {
     ENTITY **ELIST;
     GetDataFlag(MAP, FLAG_CONTAINER, (void**)&ELIST);
@@ -194,6 +256,11 @@ extern char InBounds(const int X, const int Y) {
   return X >= 0 && Y >= 0 && X < MAP_WIDTH && Y < MAP_HEIGHT;
 }
 
+/**
+ * Adds an basic entity controller to an entity
+ * @param E The entity
+ * @param Controller The controller
+ */
 extern void AddController(ENTITY *E, ENTITY_CONTROLLER *Controller) {
     if (!Controller) {
         Controller = CreateController(CONT_NOACTION);
@@ -202,8 +269,17 @@ extern void AddController(ENTITY *E, ENTITY_CONTROLLER *Controller) {
     Controller->associate = E;
 }
 
+/**
+ * The amount of time passed, counted in 1/256 second increments
+ */
 unsigned long long GLOBAL_TIMER = 0; // 256 is considered "One second"
 
+/**
+ * Scales a time value to an entity's speed
+ * @param Time The amount of time
+ * @param E The entity
+ * @return The scaled time value
+ */
 int ScaleTime(unsigned long long Time, ENTITY *E) {
     if (Time == 0 || !E)
         return Time;
@@ -216,6 +292,12 @@ int ScaleTime(unsigned long long Time, ENTITY *E) {
     return Time;
 }
 
+/**
+ * Advances time. Only used by the player.
+ * @param Time The amount of time
+ * @param E The player
+ * @return If the time value is non-zero.
+ */
 int GTimeAdvance(const unsigned long long Time, ENTITY *E) {
     if (!Time)
         return 0;
