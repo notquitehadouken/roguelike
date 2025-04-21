@@ -50,16 +50,17 @@ void runGame(ENTITY *game) {
             break;
         leadAct = 0;
         tailAct = 0;
-        ENTITY *map;
+        ENTITY **mapRef;
         char gotMap = 0;
         ENTITY *player;
         GetDataFlag(game, FLAG_PLAYER, (void**)&player);
         while (!gotMap) {
-            GetDataFlag(player, FLAG_CONTAINEDBY, (void**)&map);
-            if (!map)
+            GetDataFlag(player, FLAG_CONTAINEDBY, (void**)&mapRef);
+            if (!mapRef)
                 break;
-            GetBoolFlag(map, BFLAG_ISMAP, &gotMap);
+            GetBoolFlag(*mapRef, BFLAG_ISMAP, &gotMap);
         }
+    	const ENTITY *map = *mapRef;
         GetDataFlag(game, FLAG_APPEARANCE, (void**)&buffer);
         if (gotMap) {
             b_writeMapToBuffer(buffer, map, player);
@@ -118,20 +119,26 @@ void runGame(ENTITY *game) {
 			}
 		}
 
-    	for (int uid = 1;;uid++) {
-    		ENTITY *ent = EntityLookup(uid);
-    		if (!ent)
+    	for (;;) {
+    		int anyProcessed = 0;
+    		for (int uid = 1;;uid++) {
+
+    			ENTITY *ent = EntityLookup(uid);
+    			if (!ent)
+    				break;
+
+    			ENTITY_CONTROLLER *Controller;
+    			GetDataFlag(ent, FLAG_CONTROLS, (void**)&Controller);
+    			if (!Controller)
+    				continue;
+
+    			if (Controller->nextAct > GLOBAL_TIMER)
+    				continue;
+
+    			anyProcessed |= ControllerProcess(Controller, game);
+    		}
+    		if (!anyProcessed)
     			break;
-
-    		ENTITY_CONTROLLER *Controller;
-    		GetDataFlag(ent, FLAG_CONTROLS, (void**)&Controller);
-    		if (!Controller)
-    			continue;
-
-    		if (Controller->nextAct > GLOBAL_TIMER)
-    			continue;
-
-    		ControllerProcess(Controller, game);
     	}
 	}
 }

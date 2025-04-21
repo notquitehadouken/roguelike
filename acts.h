@@ -9,7 +9,7 @@
 #include "object.h"
 
 enum TIMEOF_ENUM {
-    TIMEOF_COLLIDE = 32, // The amount of time it takes to walk into something. If that something has no effect, this is not used.
+    TIMEOF_COLLIDE = 32, // The amount of time it takes to walk into something that does something.
     TIMEOF_SHORTWAIT = 32, // Time of pressing w (lowercase)
     TIMEOF_LONGWAIT = 256, // Time of pressing W (uppercase)
     TIMEOF_MOVEBASIC = 16, // How long it takes to move 1 tile by default
@@ -183,10 +183,11 @@ extern int TryMove(ENTITY* E, const int dir) {
         return 0;
     int _, x, y;
     unsigned int *posDat;
-    ENTITY *map;
-    GetDataFlag(E, FLAG_CONTAINEDBY, (void**)&map);
-    if (!map) // Something has gone wrong, but sure.
+    ENTITY **mapRef;
+    GetDataFlag(E, FLAG_CONTAINEDBY, (void**)&mapRef);
+    if (!mapRef) // Something has gone wrong, but sure.
         return 0;
+    const ENTITY *map = *mapRef;
     GetDataFlag(E, FLAG_POS, (void**)&posDat);
     ConvertToZXY(*posDat, &_, &x, &y);
     x += desiredDX;
@@ -219,13 +220,15 @@ extern int TryMove(ENTITY* E, const int dir) {
  * Handles controller logic. Called every game loop for every entity with a controller.
  * @param controller The controller object
  * @param game The game object
+ * @return If anything happened
  */
-extern void ControllerProcess(ENTITY_CONTROLLER *controller, const ENTITY *game) {
+extern char ControllerProcess(ENTITY_CONTROLLER *controller, const ENTITY *game) {
     switch (controller->type) {
         default:
         case CONT_NOACTION:
         case CONT_DEAD: {
-            break;
+            controller->nextAct = GLOBAL_TIMER + 1;
+            return 0;
         }
         case CONT_MOVETOPLAYER: {
             ENTITY *player;
@@ -242,9 +245,13 @@ extern void ControllerProcess(ENTITY_CONTROLLER *controller, const ENTITY *game)
             ConvertToZXY(*pP, &pX, &pX, &pY);
             ConvertToZXY(*uP, &uX, &uX, &uY);
 
-            int dir;
+            char dir;
             Vec2ToDir(pX - uX, pY - uY, &dir);
-            controller->nextAct += ScaleTime(TryMove(us, dir), us);
+            const int move = TryMove(us, dir);
+            controller->nextAct += ScaleTime(move, us);
+            if (move <= 0)
+                controller->nextAct += ScaleTime(TIMEOF_LONGWAIT, us);
+            return 1;
         }
     }
 }

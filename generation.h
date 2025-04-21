@@ -11,7 +11,9 @@ extern void addEntToContainer(ENTITY *container, ENTITY *ent) {
     for (int i = 0; i < CONTAINERCAPACITY /* If it hits CONTAINERCAPACITY entities,
         you are fucked.*/; i++) {
         if (!ELIST[i]) {
-            SetDataFlag(ent, FLAG_CONTAINEDBY, container);
+        	ENTITY **containerRef = malloc(sizeof(ENTITY*));
+        	*containerRef = container;
+            SetDataFlag(ent, FLAG_CONTAINEDBY, containerRef);
             ELIST[i] = ent;
             return;
         }
@@ -124,7 +126,9 @@ extern void generateGame(ENTITY **out) {
 			if (x >= 20 && y >= 20 && random_nextInt() % 30 == 1) {
 				ENTITY *follower = entFactory(map, x, y, 3, '@', 33);
 				SetBoolFlag(follower, BFLAG_COLLIDABLE);
-				AddController(follower, CreateController(CONT_MOVETOPLAYER));
+				ENTITY_CONTROLLER *Controller = CreateController(CONT_MOVETOPLAYER);
+				Controller->nextAct = GLOBAL_TIMER;
+				AddController(follower, Controller);
 				addEntToContainer(map, follower);
 				int *S = malloc(sizeof(S));
 				*S = 128;
@@ -138,26 +142,15 @@ extern void generateGame(ENTITY **out) {
 			}
 		}
 
-	ENTITY *playerEnt;
-	CreateEntity(&playerEnt);
+	ENTITY *playerEnt = entFactory(map, 0, 0, 255, '@', 31);
 	SetDataFlag(playerEnt, FLAG_NAME, "Player");
-
-	B_PIXEL *PX = malloc(sizeof(PX));
-	PX->text = '@';
-	PX->color = 31;
-	SetDataFlag(playerEnt, FLAG_APPEARANCE, PX);
-
-	unsigned int *PlayerPos = malloc(sizeof(unsigned int));
-	*PlayerPos = 0xFF000000;
-	SetDataFlag(playerEnt, FLAG_POS, PlayerPos);
 
 	int *HP = malloc(2 * sizeof(int));
 	HP[0] = 100;
 	HP[1] = 150;
 	SetDataFlag(playerEnt, FLAG_HEALTH, HP);
-
 	SetDataFlag(game, FLAG_PLAYER, playerEnt);
-	addEntToContainer(map, playerEnt);
+
 	B_BUFFER *buffer;
 	b_initialize(&buffer);
 	SetDataFlag(game, FLAG_APPEARANCE, buffer);

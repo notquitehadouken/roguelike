@@ -118,7 +118,7 @@ extern void b_setPixel(B_BUFFER *buffer, const int row, const int col, B_PIXEL *
 extern void b_writeToColor(B_BUFFER *buffer, const int row, const int col, const char *text, char color) {
     const int index = b_getIndex(row, col);
     for (int i = 0; text[i]; i++) {
-        B_PIXEL *P = malloc(2 * sizeof(char));
+        B_PIXEL *P = malloc(sizeof(B_PIXEL));
         P->text = text[i];
         P->color = color;
         __WRITE(buffer, index + i, P);

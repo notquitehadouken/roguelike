@@ -56,9 +56,10 @@ struct CONTROLLER {
 typedef struct CONTROLLER ENTITY_CONTROLLER;
 
 extern ENTITY_CONTROLLER *CreateController(const int type) {
-    ENTITY_CONTROLLER *PCont = malloc(sizeof(ENTITY_CONTROLLER*));
+    ENTITY_CONTROLLER *PCont = malloc(sizeof(ENTITY_CONTROLLER));
     PCont->associate = 0;
     PCont->type = type;
+    PCont->nextAct = 0;
     return PCont;
 }
 
