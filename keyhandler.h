@@ -1,5 +1,8 @@
 #pragma once
-#define MAX_STR_LEN 64
+#include <signal.h>
+#ifdef USING_TERMIOS
+#include <termios.h>
+#endif
 
 #ifdef USING_TERMIOS
 void setUnbuffered()
@@ -17,6 +20,7 @@ int l_I;
 
 char getck(int* out)
 {
+  signal(SIGINT, SIG_IGN);
   char c = 0;
 #ifdef USING_TERMIOS
   setUnbuffered();
@@ -37,13 +41,15 @@ int setck(const int set)
 {
   l_I = set;
   return set;
-};
+}
 
 enum INPUT
 {
-  FAIL = (char)0xFF,
+  FAIL = 0xFF,
   STR_COMM = '!',
   OPEN_HELP = '?',
+  CONFIRM = '\n',
+  EXAMINE = 'x',
 #ifndef NUMPAD_USE
   UP_KEEP = 'K',
   DOWN_KEEP = 'J',
@@ -53,6 +59,8 @@ enum INPUT
   UPLEFT_KEEP = 'Y',
   DOWNRIGHT_KEEP = 'N',
   DOWNLEFT_KEEP = 'B',
+  HEIGHTUP_KEEP = 'I',
+  HEIGHTDOWN_KEEP = 'M',
   UP = 'k',
   DOWN = 'j',
   LEFT = 'h',
@@ -61,15 +69,20 @@ enum INPUT
   UPLEFT = 'y',
   DOWNRIGHT = 'n',
   DOWNLEFT = 'b',
+  HEIGHTUP = 'i',
+  HEIGHTDOWN = 'm',
+  JUMP = ' ',
 #else
-  UP_KEEP = 0,
-  DOWN_KEEP = 0,
-  LEFT_KEEP = 0,
-  RIGHT_KEEP = 0,
-  UPRIGHT_KEEP = 0,
-  UPLEFT_KEEP = 0,
-  DOWNRIGHT_KEEP = 0,
-  DOWNLEFT_KEEP = 0,
+  UP_KEEP = -1,
+  DOWN_KEEP = -2,
+  LEFT_KEEP = -3,
+  RIGHT_KEEP = -4,
+  UPRIGHT_KEEP = -5,
+  UPLEFT_KEEP = -6,
+  DOWNRIGHT_KEEP = -7,
+  DOWNLEFT_KEEP = -8,
+  HEIGHTUP_KEEP = -9,
+  HEIGHTDOWN_KEEP = -10,
   UP = '8',
   DOWN = '2',
   LEFT = '4',
@@ -78,12 +91,27 @@ enum INPUT
   UPLEFT = '7',
   DOWNRIGHT = '3',
   DOWNLEFT = '1',
+  HEIGHTUP = '+',
+  HEIGHTDOWN = '-',
+  JUMP = '0',
 #endif
-  INVENTORY = 'i',
+  KEY_VIEWHEIGHT_UP = '>',
+  KEY_VIEWHEIGHT_DOWN = '<',
+  KEY_VIEWHEIGHT_C_RAISE = '.',
+  KEY_VIEWHEIGHT_C_LOWER = ',',
+  KEY_MAPCOLORSCALINGTOGGLE = ';',
+  INVENTORY = 'e',
   SHORT_WAIT = 'w',
   LONG_WAIT = 'W',
-  BUFFER_REDRAW = 0x10B,
-  DEBUG_ENT = 0x10D,
+  BUFFER_REDRAW = 0x100 | 'B',
+  DEBUG_ENT = 0x100 | 'D',
+  DEBUG_ENTS_ON_POS = 0x100 | 'P',
+  I_CAST_EXPLODE_BALLS = 'E',
+};
+
+enum INPUT_SECONDARY
+{
+  SCREEN_SET
 };
 
 /**
@@ -95,7 +123,7 @@ extern int getNextInput()
   getck(&l_I);
   switch (l_I)
   {
-  case 0x1B: // Escape, so it must be arrow keys.
+  case 0x1B: // Escape, so it must be arrow keys. (or a debug option)
     getck(&l_I);
     switch (l_I)
     {
@@ -107,6 +135,12 @@ extern int getNextInput()
     case 'D':
     case 'd':
       return setck(DEBUG_ENT);
+    case 'P':
+    case 'p':
+      return setck(DEBUG_ENTS_ON_POS);
+    case 'E':
+    case 'e':
+      return setck(I_CAST_EXPLODE_BALLS);
     default:
       return setck(FAIL);
     }
@@ -141,47 +175,4 @@ extern void getStringInput(char** out)
   sprintf(form, "%%%ds", MAX_STR_LEN - 1);
   scanf(form, str);
   *out = str;
-}
-
-/**
- * Checks if two MAX_STR_LEN strings are equal.
- * Does not consider case
- * @param a The first string
- * @param b The second string
- * @return If they are equal
- */
-extern char stringEqCaseless(const char* a, const char* b)
-{
-  for (int i = 0; i < MAX_STR_LEN; i++)
-  {
-    char tai = a[i];
-    char tbi = b[i];
-    if (tai >= 'A' && tai <= 'Z')
-      tai += 'a' - 'A';
-    if (tbi >= 'A' && tbi <= 'Z')
-      tbi += 'a' - 'A';
-    if (tai != tbi)
-      return 0;
-    if (tai == 0x0 && tbi == 0x0)
-      return 1;
-  }
-  return 0;
-}
-
-/**
- * Checks if two MAX_STR_LEN strings are equal
- * @param a The first string
- * @param b The second string
- * @return If they are equal
- */
-extern char stringEq(const char* a, const char* b)
-{
-  for (int i = 0; i < MAX_STR_LEN; i++)
-  {
-    if (a[i] != b[i])
-      return 0;
-    if (a[i] == 0x0 && b[i] == 0x0)
-      return 1;
-  }
-  return 1;
 }

@@ -1,29 +1,15 @@
 #pragma once
+
 #include "global.h"
 #include "object.h"
 
-/**
- * Adds an entity to a container
- * @param container The container
- * @param ent The entity
- */
-extern void addEntToContainer(ENTITY* container, ENTITY* ent)
+enum ENT_PREFAB
 {
-  ENTITY** ELIST; // (-1) [cursed]
-  GetDataFlag(container, FLAG_CONTAINER, (void**)&ELIST);
-  for (int i = 0; i < CONTAINERCAPACITY /* If it hits CONTAINERCAPACITY entities,
-        you are fucked.*/; i++)
-  {
-    if (!ELIST[i])
-    {
-      ENTITY** containerRef = malloc(sizeof(ENTITY*));
-      *containerRef = container;
-      SetDataFlag(ent, FLAG_CONTAINEDBY, containerRef);
-      ELIST[i] = ent;
-      return;
-    }
-  }
-}
+  PREFAB_WALL = 0,
+  PREFAB_WINDOW,
+  PREFAB_PUSHBOX,
+  PREFAB_FRAGILEWALL,
+};
 
 /**
  * Removes an entity from a container
@@ -33,57 +19,124 @@ extern void addEntToContainer(ENTITY* container, ENTITY* ent)
  */
 extern void removeEntFromContainer(const ENTITY* container, ENTITY* ent)
 {
-  ENTITY** ELIST; // (-1) [cursed]
-  GetDataFlag(container, FLAG_CONTAINER, (void**)&ELIST);
-  for (int i = 0; i < CONTAINERCAPACITY; i++)
-  {
-    if (ELIST[i] == ent)
-    {
-      ClearDataFlag(ent, FLAG_CONTAINEDBY);
-      ELIST[i] = nullptr;
-      return;
-    }
-  }
+  _CACHE_OF(ENTITY)* cache;
+  GetDataFlag(container, FLAG_CONTAINER, (void**)&cache);
+  cacheRemove(_CACHE(*cache), ent);
+  ClearDataFlag(ent, FLAG_CONTAINEDBY);
 }
 
 /**
- * Adds a container to an entity if one does not exist already
+ * Adds an entity to a container
+ * @param container The container
+ * @param ent The entity
+ */
+extern void addEntToContainer(ENTITY* container, ENTITY* ent)
+{
+  if (HasDataFlag(ent, FLAG_CONTAINEDBY))
+  {
+    ENTITY** reference;
+    GetDataFlag(ent, FLAG_CONTAINEDBY, (void**)&reference);
+    removeEntFromContainer(*reference, ent);
+  }
+  _CACHE_OF(ENTITY)* cache;
+  GetDataFlag(container, FLAG_CONTAINER, (void**)&cache);
+  cacheAdd(_CACHE_REF(cache), ent);
+  ENTITY** reference = malloc(sizeof(*reference));
+  *reference = container;
+  SetDataFlag(ent, FLAG_CONTAINEDBY, reference);
+}
+
+/**
+ * Properly adds a container to an entity if one does not exist already
  * @param E The entity
  */
 extern void addContainer(ENTITY* E)
 {
   if (HasDataFlag(E, FLAG_CONTAINER))
     return;
-  void** LIST = malloc(CONTAINERCAPACITY * sizeof(int*));
-  for (int i = 0; i < CONTAINERCAPACITY; i++)
-    LIST[i] = nullptr;
-  SetDataFlag(E, FLAG_CONTAINER, LIST);
+  _CACHE_OF(ENTITY)* container = malloc(sizeof(*container));
+  cacheInit(_CACHE_REF(container));
+  SetDataFlag(E, FLAG_CONTAINER, container);
 }
 
 /**
- * Removes an entity's container if it has one
+ * Properly removes an entity's container if it has one
  * Every entity in that container is automatically placed into the parent container of E
  * They also inherit E's position, assuming they have one.
  * @param E The entity that will lose its container
  */
 extern void removeContainer(ENTITY* E)
 {
-  ENTITY** ELIST;
-  GetDataFlag(E, FLAG_CONTAINER, (void**)&ELIST);
-  if (!ELIST)
+  _CACHE_OF(ENTITY)* container;
+  GetDataFlag(E, FLAG_CONTAINER, (void**)&container);
+  if (!container)
     return;
-  ClearDataFlag(E, FLAG_CONTAINER); // Time to rescue all the entities from the void.
+  uint containerLength = cacheLength(_CACHE(*container));
   ENTITY* CONTAINING_ENT;
   GetDataFlag(E, FLAG_CONTAINEDBY, (void**)&CONTAINING_ENT);
-  for (int i = 0; i < CONTAINERCAPACITY; i++)
+  int EZ, EX, EY;
+  int *Pos;
+  GetDataFlag(E, FLAG_POS, (void**)&Pos);
+  if (Pos)
   {
-    ENTITY* E2 = ELIST[i];
-    if (!E2)
-      break;
-    ClearDataFlag(E2, FLAG_CONTAINEDBY);
-    if (CONTAINING_ENT)
-      addEntToContainer(CONTAINING_ENT, E2);
+    ConvertToZXY(*Pos, &EZ, &EX, &EY);
   }
+  int i;
+  for (i = 0; i < containerLength; i++)
+  {
+    ENTITY* access = cacheAccess(_CACHE(*container), i);
+    if (!access) // This is probably impossible.
+      continue;
+    ClearDataFlag(access, FLAG_CONTAINEDBY);
+    if (CONTAINING_ENT)
+      addEntToContainer(CONTAINING_ENT, access);
+    if (Pos && HasDataFlag(access, FLAG_POS))
+    {
+      uint *AccessPos;
+      GetDataFlag(access, FLAG_POS, (void**)&AccessPos);
+      ConvertToPosDat(EZ, EX, EY, AccessPos);
+    }
+  }
+  cacheDelete(_CACHE(*container));
+  ClearDataFlag(E, FLAG_CONTAINER);
+}
+
+/**
+ * Sets color info for an entity.
+ * Passing -1 to any of the color parameters keeps the current value.
+ * @param In The entity
+ * @param Color The primary color
+ * @param Backcolor The secondary color
+ * @param RenderOrder The render order
+ */
+extern void entSetColor(ENTITY* In, int Color, int Backcolor, int RenderOrder)
+{
+  B_PIXEL* Current;
+  GetDataFlag(In, FLAG_APPEARANCE, (void**)&Current);
+  Color = Color != -1 ? Color : Current->color;
+  Backcolor = Backcolor != -1 ? Backcolor : Current->backcolor;
+  RenderOrder = RenderOrder != -1 ? RenderOrder : Current->renderorder;
+  B_PIXEL* New = malloc(sizeof(B_PIXEL));
+  New->text = Current->text;
+  New->color = Color;
+  New->backcolor = Backcolor;
+  New->renderorder = RenderOrder;
+  SetDataFlag(In, FLAG_APPEARANCE, New);
+}
+
+/**
+ * Sets the name of an entity.
+ */
+extern void entSetName(ENTITY* In, char *newName)
+{
+  int len = strlen(newName);
+  char *nameSafe = calloc(len + 1, sizeof(char));
+  int i;
+  for (i = 0; i < len; i++)
+  {
+    nameSafe[i] = newName[i];
+  }
+  SetDataFlag(In, FLAG_NAME, nameSafe);
 }
 
 /**
@@ -93,23 +146,19 @@ extern void removeContainer(ENTITY* E)
  * @param Y Y position
  * @param Z Z rendering order
  * @param Text The text of the entity
- * @param Color The color of the entity
  * @return The entity
  */
-extern ENTITY* entFactory(ENTITY* In, const int X, const int Y, const unsigned char Z, const char Text,
-                          const unsigned char Color)
+extern ENTITY* entFactory(ENTITY* In, const int X, const int Y, const int Z, const char Text)
 {
   ENTITY* E;
   CreateEntity(&E);
   B_PIXEL* EP = malloc(sizeof(EP));
   EP->text = Text;
-  EP->color = Color;
+  EP->color = B_DEFAULT_COLOR;
   EP->backcolor = 0;
-  EP->effect = 0;
+  EP->renderorder = 0;
   SetDataFlag(E, FLAG_APPEARANCE, EP);
-  unsigned int* P = malloc(sizeof(unsigned int));
-  ConvertToPosDat(Z, X, Y, P);
-  SetDataFlag(E, FLAG_POS, P);
+  SetEntPos(E, X, Y, Z);
   if (In)
     addEntToContainer(In, E);
 
@@ -119,26 +168,63 @@ extern ENTITY* entFactory(ENTITY* In, const int X, const int Y, const unsigned c
 }
 
 /**
- * Sets color info for an entity.
- * Passing -1 to any of the color parameters keeps the current value.
- * @param In The entity
- * @param Color The primary color
- * @param Backcolor The secondary color
- * @param Effect The effect
+ * Generates an entity template.
  */
-extern void entSetColor(ENTITY* In, int Color, int Backcolor, int Effect)
+extern ENTITY* entPrefab(const enum ENT_PREFAB PrefabID, ENTITY* In, const int X, const int Y, const int Z)
 {
-  B_PIXEL *Current;
-  GetDataFlag(In, FLAG_APPEARANCE, (void**)&Current);
-  Color = Color != -1 ? Color : Current->color;
-  Backcolor = Backcolor != -1 ? Backcolor : Current->backcolor;
-  Effect = Effect != -1 ? Effect : Current->effect;
-  B_PIXEL *New = malloc(sizeof(B_PIXEL));
-  New->text = Current->text;
-  New->color = Color;
-  New->backcolor = Backcolor;
-  New->effect = Effect;
-  SetDataFlag(In, FLAG_APPEARANCE, New);
+  switch (PrefabID)
+  {
+  default: break;
+  case PREFAB_WALL:
+    {
+      ENTITY* ent = entFactory(In, X, Y, Z, '#');
+      entSetColor(ent, 240, 0, 127);
+      entSetName(ent, "Wall");
+      SetDataFlag(ent, FLAG_HEALTH, int2ap(25, 25));
+      SetDataFlag(ent, FLAG_ARMOR, intap(5));
+      SetBoolFlag(ent, BFLAG_DESTRUCTIBLE);
+      SetBoolFlag(ent, BFLAG_OCCLUDING);
+      SetBoolFlag(ent, BFLAG_STOPPING);
+      SetBoolFlag(ent, BFLAG_STATIC);
+      return ent;
+    }
+  case PREFAB_WINDOW:
+    {
+      ENTITY* ent = entFactory(In, X, Y, Z, '[');
+      entSetColor(ent, 75, 0, 63);
+      entSetName(ent, "Window");
+      SetDataFlag(ent, FLAG_HEALTH, int2ap(10, 10));
+      SetDataFlag(ent, FLAG_ARMOR, intap(1));
+      SetBoolFlag(ent, BFLAG_DESTRUCTIBLE);
+      SetBoolFlag(ent, BFLAG_STOPPING);
+      SetBoolFlag(ent, BFLAG_STATIC);
+      return ent;
+    }
+  case PREFAB_PUSHBOX:
+    {
+      ENTITY* ent = entFactory(In, X, Y, Z, 'M');
+      entSetColor(ent, 202, 0, 127);
+      entSetName(ent, "Box");
+      SetDataFlag(ent, FLAG_HEALTH, int2ap(5, 5));
+      SetBoolFlag(ent, BFLAG_DESTRUCTIBLE);
+      SetBoolFlag(ent, BFLAG_PUSHABLE);
+      return ent;
+    }
+  case PREFAB_FRAGILEWALL:
+    {
+      ENTITY* ent = entFactory(In, X, Y, Z, '#');
+      entSetColor(ent, 81, 0, 127);
+      entSetName(ent, "Weak wall");
+      SetDataFlag(ent, FLAG_HEALTH, int2ap(15, 15));
+      SetDataFlag(ent, FLAG_FRAGILE, intap(15));
+      SetBoolFlag(ent, BFLAG_DESTRUCTIBLE);
+      SetBoolFlag(ent, BFLAG_OCCLUDING);
+      SetBoolFlag(ent, BFLAG_STOPPING);
+      SetBoolFlag(ent, BFLAG_STATIC);
+      return ent;
+    }
+  }
+  return entFactory(In, X, Y, Z, 'X');
 }
 
 /**
@@ -153,88 +239,71 @@ extern void generateGame(ENTITY** out)
   CreateEntity(&map);
   SetBoolFlag(map, BFLAG_ISMAP);
   addContainer(map);
-  ENTITY** maps = malloc(GAMETOTALMAPS * sizeof(map));
-  maps[0] = map;
-  SetDataFlag(game, FLAG_MAPS, maps);
-  for (int x = 0; x < MAP_WIDTH; x++)
-    for (int y = 0; y < MAP_HEIGHT; y++)
+  _CACHE_OF(ENTITY) mapCache;
+  cacheInit(_CACHE_REF(&mapCache));
+  cacheAdd(_CACHE_REF(&mapCache), map);
+  SetDataFlag(game, FLAG_MAPS, mapCache);
+  ENTITY* gravity;
+  CreateEntity(&gravity);
+  AddController(gravity, CreateController(CONT_ZVEL_HANDLE));
+  int x;
+  for (x = 0; x < MAP_WIDTH; x++)
+  {
+    if (x > 12)
     {
-      entFactory(map, x, y, 0, '.', 59);
-      if (y >= 2 && x < 16)
+      entPrefab(PREFAB_WINDOW, map, x, 2, x - 12);
+      entPrefab(PREFAB_WINDOW, map, x, 3, x - 12);
+    }
+    int y;
+    for (y = 0; y < MAP_HEIGHT; y++)
+    {
+      int targetPrefab = (y == 20 || y == 21 || y == 22) ? PREFAB_WINDOW : PREFAB_WALL;
+      entPrefab(PREFAB_WALL, map, x, y, 0);
+      if (x >= 20 && x < 30 && y == 5)
       {
-        const int cocaine = (y - 2) * 16 + x;
-        if (cocaine < 512)
-        {
-          ENTITY *test = entFactory(map, x * 2, y, 1, cocaine / 2, 15);
-          if (cocaine % 2)
-            entSetColor(test, 0, 4, 5);
-        }
+        int z = x - 19 + 4;
+        ENTITY *numbertile = entFactory(map, x, y, z, '0' + x - 20);
+        char naem[2];
+        naem[0] = '0' + x - 20;
+        naem[1] = 0;
+        entSetName(numbertile, naem);
+        SetBoolFlag(numbertile, BFLAG_STATIC);
       }
-      if (x >= 14 && y >= 28)
+      if (x >= 16)
       {
-        if (x % 7 == 0 && y % 7 == 0)
-        {
-          ENTITY* wall = entFactory(map, x, y, 127, '#', 188);
-          SetBoolFlag(wall, BFLAG_COLLIDABLE);
-          SetBoolFlag(wall, BFLAG_OCCLUDING);
-        }
-        else if ((x % 7 == 0 || y % 7 == 0) && random_nextInt() % 2 == 0)
-        {
-          ENTITY* wall = entFactory(map, x, y, 127, '#', 102);
-          SetBoolFlag(wall, BFLAG_COLLIDABLE);
-          SetBoolFlag(wall, BFLAG_OCCLUDING);
-        }
+        int shed = (x == 40 || x == 41) ? 3 : 4;
+        for (; shed >= 3; shed--)
+          entPrefab(targetPrefab, map, x, y, shed);
       }
-      if (x >= 20 && y >= 40 && random_nextInt() % 30 == 1)
+      int pX = 41 - x;
+      int pY = 40 - y;
+      if (pX < 0) pX = -pX;
+      if (pY < 0) pY = -pY;
+      int mi = max(pX, pY);
+      int pZ = 15 - mi;
+      int i;
+      for (i = pZ * 2 - ((x + y) % 2); i > 4; i--)
       {
-        ENTITY* follower = entFactory(map, x, y, 255, '@', 33);
-        SetBoolFlag(follower, BFLAG_COLLIDABLE);
-        ENTITY_CONTROLLER* Controller = CreateController(CONT_MOVETOPLAYER);
-        Controller->nextAct = GLOBAL_TIMER;
-        AddController(follower, Controller);
-        addEntToContainer(map, follower);
-        int* S = malloc(sizeof(S));
-        *S = 100;
-        SetDataFlag(follower, FLAG_SPEED, S);
-      }
-      if (y > 35)
-      {
-        if (x >= 25 && !(x % 9))
-        {
-          ENTITY* floor = entFactory(map, x, y, 1, '*', 36);
-          int* SC = malloc(sizeof(int));
-          *SC = -3;
-          SetDataFlag(floor, FLAG_CHANGE_SPEED_ON_STEP, SC);
-        }
-        if (x == 10)
-        {
-          ENTITY* floor = entFactory(map, x, y, 1, '*', 31);
-          int* SC = malloc(sizeof(int));
-          *SC = 3;
-          SetDataFlag(floor, FLAG_CHANGE_SPEED_ON_STEP, SC);
-        }
+        entSetName(entPrefab(PREFAB_WALL, map, x, y, i), "Pyramid");
       }
     }
+  }
+  entPrefab(PREFAB_FRAGILEWALL, map, 9, 9, 1);
 
-  ENTITY* playerEnt = entFactory(map, 0, 0, 255, '@', 31);
-  entSetColor(playerEnt, -1, -1, 7);
-  SetDataFlag(playerEnt, FLAG_NAME, "Player");
+  ENTITY* playerEnt = entFactory(map, 1, 1, 1, '@');
+  entSetColor(playerEnt, 0, 12, 255);
+  char *playeynamey;
 
-  int* HP = malloc(2 * sizeof(int));
-  HP[0] = 100;
-  HP[1] = 100;
-  SetDataFlag(playerEnt, FLAG_HEALTH, HP);
+  entSetName(playerEnt, "Player");
 
-  int* SP = malloc(sizeof(int));
-  *SP = 5;
-  SetDataFlag(playerEnt, FLAG_SPEED, SP);
+  SetDataFlag(playerEnt, FLAG_HEALTH, int2ap(100, 100));
+  SetDataFlag(playerEnt, FLAG_SPEED, intap(50));
+  SetDataFlag(playerEnt, FLAG_CANJUMP, intap(4));
+  SetDataFlag(playerEnt, FLAG_SIGHTRANGE, intap(20));
 
-  int* VR = malloc(sizeof(int));
-  *VR = 20;
-  SetDataFlag(playerEnt, FLAG_SIGHTRANGE, VR);
+  SetBoolFlag(playerEnt, BFLAG_CLIMBER);
 
   SetDataFlag(game, FLAG_PLAYER, playerEnt);
-
 
   B_BUFFER* buffer;
   b_initialize(&buffer);
