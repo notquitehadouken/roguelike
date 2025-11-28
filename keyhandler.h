@@ -107,6 +107,7 @@ enum INPUT
   DEBUG_ENT = 0x100 | 'D',
   DEBUG_ENTS_ON_POS = 0x100 | 'P',
   I_CAST_EXPLODE_BALLS = 'E',
+  I_CAST_GUN = 'f',
 };
 
 enum INPUT_SECONDARY

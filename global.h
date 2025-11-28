@@ -300,6 +300,16 @@ extern attrconst int max(const int a, const int b)
   return (a > b) ? a : b;
 }
 
+extern void mini(int *a, const int b)
+{
+  *a = min(*a, b);
+}
+
+extern void maxi(int *a, const int b)
+{
+  *a = max(*a, b);
+}
+
 extern attrconst int clamp(const int val, const int lower, const int higher)
 {
   return (val < lower) ? lower : ((val > higher) ? higher : val);
@@ -308,6 +318,11 @@ extern attrconst int clamp(const int val, const int lower, const int higher)
 extern attrconst char sign(const int val)
 {
   return val ? ((val < 0) ? -1 : 1) : 0;
+}
+
+extern attrconst int mag(const int val)
+{
+  return (val < 0) ? -val : val;
 }
 
 #define flip(n) (((n) <= 0) - (n))
@@ -532,8 +547,8 @@ extern void cacheShrink(_CACHE_OF(_CACHE_TYPE)* Target)
   int i;
   for (i = blocks - 1; i >= 0; i--)
   {
-    if (Target[i][0]) break;
-    free(Target[i]);
+    if ((*Target)[i][0]) break;
+    free((*Target)[i]);
     targetBlocks -= 1;
   }
   _CACHE_TYPE*** NewArray = calloc(targetBlocks + 1, sizeof(_CACHE_TYPE*));

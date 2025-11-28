@@ -9,7 +9,25 @@ enum ENT_PREFAB
   PREFAB_WINDOW,
   PREFAB_PUSHBOX,
   PREFAB_FRAGILEWALL,
+  PREFAB_BULLET,
+  PREFAB_EXPLOSIONGFX,
+  PREFAB_BULLETGFX,
 };
+
+extern ENTITY* mapOf(ENTITY* E)
+{
+  ENTITY** mapRef;
+  char gotMap = 0;
+  while (!gotMap)
+  {
+    GetDataFlag(E, FLAG_CONTAINEDBY, (void**)&mapRef);
+    if (!mapRef)
+      break;
+    E = *mapRef;
+    GetBoolFlag(*mapRef, BFLAG_ISMAP, &gotMap);
+  }
+  return gotMap ? *mapRef : 0;
+}
 
 /**
  * Removes an entity from a container
@@ -124,6 +142,13 @@ extern void entSetColor(ENTITY* In, int Color, int Backcolor, int RenderOrder)
   SetDataFlag(In, FLAG_APPEARANCE, New);
 }
 
+extern void entSetText(ENTITY* In, char Text)
+{
+  B_PIXEL* Current;
+  GetDataFlag(In, FLAG_APPEARANCE, (void**)&Current);
+  Current->text = Text;
+}
+
 /**
  * Sets the name of an entity.
  */
@@ -167,8 +192,27 @@ extern ENTITY* entFactory(ENTITY* In, const int X, const int Y, const int Z, con
   return E;
 }
 
+extern void addStepper(ENTITY *E, const int tX, const int tY, const int tZ, const int expireTime)
+{
+  if (expireTime != 0)
+  {
+    SetBoolFlag(E, BFLAG_STATIC);
+  }
+  if (expireTime > 0)
+  {
+    SetDataFlag(E, FLAG_STEPPERAIRTIME, intap(expireTime));
+  }
+  int *StepperInfo = calloc(6, sizeof(int));
+  StepperInfo[0] = StepperInfo[2] = StepperInfo[4] = 0;
+  StepperInfo[1] = tX;
+  StepperInfo[3] = tY;
+  StepperInfo[5] = tZ;
+  SetDataFlag(E, FLAG_STEPPERINFO, StepperInfo);
+  AddController(E, CreateController(CONT_STEPPER));
+}
+
 /**
- * Generates an entity template.
+ * Generates an entity from a template.
  */
 extern ENTITY* entPrefab(const enum ENT_PREFAB PrefabID, ENTITY* In, const int X, const int Y, const int Z)
 {
@@ -221,6 +265,36 @@ extern ENTITY* entPrefab(const enum ENT_PREFAB PrefabID, ENTITY* In, const int X
       SetBoolFlag(ent, BFLAG_OCCLUDING);
       SetBoolFlag(ent, BFLAG_STOPPING);
       SetBoolFlag(ent, BFLAG_STATIC);
+      return ent;
+    }
+  case PREFAB_BULLET:
+    {
+      ENTITY* ent = entFactory(In, X, Y, Z, '#');
+      entSetColor(ent, colorOf(255, 255, 0), 0, 256);
+      entSetName(ent, "Boolet");
+      SetBoolFlag(ent, BFLAG_STATIC);
+      return ent;
+    }
+  case PREFAB_EXPLOSIONGFX:
+    {
+      ENTITY* ent = entFactory(In, X, Y, Z, '*');
+      entSetColor(ent, 0, 0, 1);
+      entSetName(ent, "Kaboom");
+      SetBoolFlag(ent, BFLAG_STATIC);
+      int decayTime = 125;
+      decayTime += random_nextInt() % 76;
+      SetDataFlag(ent, FLAG_DECAY, int2ap(decayTime, decayTime));
+      AddController(ent, CreateController(CONT_DECAY));
+      return ent;
+    }
+  case PREFAB_BULLETGFX:
+    {
+      ENTITY* ent = entFactory(In, X, Y, Z, '*');
+      entSetColor(ent, 0, 0, 2);
+      entSetName(ent, "Pew");
+      SetBoolFlag(ent, BFLAG_STATIC);
+      SetDataFlag(ent, FLAG_DECAY, int2ap(100, 150));
+      AddController(ent, CreateController(CONT_DECAY));
       return ent;
     }
   }

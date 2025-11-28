@@ -7,6 +7,7 @@
 
 #include "global.h"
 #include "keyhandler.h"
+#include "object.h"
 #ifdef USING_WINDOWS
 #define <windows.h>
 #endif
@@ -451,8 +452,169 @@ extern void b_flush(const B_BUFFER* buffer)
   b_draw(buffer);
 }
 
-unsigned char* occludedBuffer = 0;
+extern attrpure char b_objOccludes(const ENTITY* thelooker, const ENTITY* obj)
+{
+  if (HasBoolFlag(obj, BFLAG_OCCLUDING))
+    return 1;
+  if (HasBoolFlag(obj, BFLAG_OCCLUDESFAR))
+  {
+    int lX, lY, lZ, oX, oY, oZ;
+    uint *lPos, *oPos;
+    GetDataFlag(thelooker, FLAG_POS, (void**)&lPos);
+    GetDataFlag(obj, FLAG_POS, (void**)&oPos);
+    if (lPos && oPos)
+    {
+      ConvertToZXY(*lPos, &lZ, &lX, &lY);
+      ConvertToZXY(*oPos, &oZ, &oX, &oY);
+      if (mag(lZ - oZ) > 1 || mag(lX - oX) > 1 || mag(lY - oY) > 1)
+      {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+unsigned char* occludedBuffer = 0; // Do not access this.
+ENTITY** occlusionMapContents = 0;
+char occludedDir[27];
 int occludedLastX = -1, occludedLastY = -1, occludedLastZ = -1, occludedLastSightRange = 0;
+
+#ifndef OCCLUSION_THREADCOUNT
+#define OCCLUSION_THREADCOUNT 16
+#endif
+
+struct Occlusion_StaticInfo
+{
+  int PlayerX;
+  int PlayerY;
+  int PlayerZ;
+  int LowX;
+  int LowY;
+  int LowZ;
+  int HighX;
+  int HighY;
+  int HighZ;
+  int ViewRange;
+  const ENTITY *Player;
+};
+
+struct Occlusion_StaticInfo occludedStaticInfo;
+
+pthread_barrier_t Barrier_BeginBufferload;
+pthread_barrier_t Barrier_EndBufferload;
+pthread_barrier_t Barrier_BeginLOS;
+pthread_barrier_t Barrier_EndLOS;
+
+extern __attribute__ ((__noreturn__)) void* __b_occludeThread(void* arg)
+{
+  int Index = *(int*)arg;
+  int i;
+  // ReSharper disable once CppDFAEndlessLoop
+  for (;;)
+  {
+    pthread_barrier_wait(&Barrier_BeginBufferload);
+
+    int PlayerX = occludedStaticInfo.PlayerX;
+    int PlayerY = occludedStaticInfo.PlayerY;
+    int PlayerZ = occludedStaticInfo.PlayerZ;
+    int LowX = occludedStaticInfo.LowX;
+    int LowY = occludedStaticInfo.LowY;
+    int LowZ = occludedStaticInfo.LowZ;
+    int HighX = occludedStaticInfo.HighX;
+    int HighY = occludedStaticInfo.HighY;
+    int HighZ = occludedStaticInfo.HighZ;
+    int ViewRange = occludedStaticInfo.ViewRange;
+
+    for (i = 0; occlusionMapContents[i]; i++)
+    {
+      if (i % OCCLUSION_THREADCOUNT != Index)
+        continue;
+
+      ENTITY* access = occlusionMapContents[i];
+      if (!access)
+        break;
+      if (!HasDataFlag(access, FLAG_POS) || !b_objOccludes(occludedStaticInfo.Player, access))
+        continue; //  you'd be hard pressed
+      int x, y, z;
+      uint* pos;
+      GetDataFlag(access, FLAG_POS, (void**)&pos);
+      ConvertToZXY(*pos, &z, &x, &y);
+      if (!InBounds3D(x, y, z))
+        continue;
+      occludedBuffer[x + y * MAP_WIDTH + z * MAP_CELLCOUNT] |= 0b1;
+      const int dX = x - occludedStaticInfo.PlayerX;
+      const int dY = y - occludedStaticInfo.PlayerY;
+      const int dZ = z - occludedStaticInfo.PlayerZ;
+      if (dX == 0 && dY == 0 && dZ == 0)
+        continue;
+      const int dXs = sign(dX);
+      const int dYs = sign(dY);
+      const int dZs = sign(dZ);
+      occludedDir[13 + dXs + dYs * 3 + dZs * 9] = 1;
+      occludedDir[13 + dXs + dYs * 3] = 1;
+      occludedDir[13 + dXs + dZs * 9] = 1;
+      occludedDir[13 + dYs * 3 + dZs * 9] = 1;
+      occludedDir[13 + dXs] = 1;
+      occludedDir[13 + dYs * 3] = 1;
+      occludedDir[13 + dZs * 9] = 1;
+    }
+
+    pthread_barrier_wait(&Barrier_EndBufferload);
+    pthread_barrier_wait(&Barrier_BeginLOS);
+
+    int oX;
+    for (oX = LowX; oX <= HighX; oX++)
+    {
+      int oY;
+      for (oY = LowY; oY <= HighY; oY++)
+      {
+        if ((oX + oY) % OCCLUSION_THREADCOUNT != Index)
+          continue;
+        int oZ;
+        for (oZ = LowZ; oZ <= HighZ; oZ++)
+        {
+          const int dX = oX - PlayerX;
+          const int dY = oY - PlayerY;
+          const int dZ = oZ - PlayerZ;
+          const int oIndex = oX + oY * MAP_WIDTH + oZ * MAP_CELLCOUNT;
+          occludedBuffer[oIndex] &= 0b11;
+          if (dX * dX + dY * dY + dZ * dZ >= ((float)(ViewRange * ViewRange)))
+          {
+            occludedBuffer[oIndex] |= 0b100;
+            continue;
+          }
+          if (occludedDir[13 + sign(dX) + sign(dY) * 3 + sign(dZ) * 9] == 0)
+          {
+            occludedBuffer[oIndex] = 0;
+            continue;
+          }
+          if (occludedBuffer[oIndex] & 0b10)
+            continue;
+          int count;
+          int** line = createLine(dX, dY, dZ, 1, &count);
+          for (i = 0; i < count - 1; i++)
+          {
+            const int lX = line[i][0] + PlayerX;
+            const int lY = line[i][1] + PlayerY;
+            const int lZ = line[i][2] + PlayerZ;
+            const int lIndex = lX + lY * MAP_WIDTH + lZ * MAP_CELLCOUNT;
+            if (occludedBuffer[lIndex] & 0b1)
+            {
+              occludedBuffer[oIndex] |= 0b10;
+              break;
+            }
+          }
+          freeLine(line, count);
+        }
+      }
+    }
+
+    pthread_barrier_wait(&Barrier_EndLOS);
+  }
+}
+
+pthread_t *ThreadPool = 0;
 
 /**
  * Calculates every position in a map that the player can see
@@ -460,7 +622,7 @@ int occludedLastX = -1, occludedLastY = -1, occludedLastZ = -1, occludedLastSigh
  * @param player The player entity
  * @return A MAP_LENGTH * MAP_DEPTH list of characters. The 2s place is if it is occluded, the 1s place is if it occludes.
  */
-extern attrpure unsigned char* b_getOccluded(const ENTITY* map, const ENTITY* player)
+extern unsigned char* b_getOccluded(const ENTITY* map, const ENTITY* player)
 {
   if (!occludedBuffer)
   {
@@ -471,14 +633,27 @@ extern attrpure unsigned char* b_getOccluded(const ENTITY* map, const ENTITY* pl
   }
   if (!occludedBuffer)
     return 0;
-  int occludedDir[27];
+  if (!ThreadPool)
+  {
+    // This thread must also wait at the barrier
+    pthread_barrier_init(&Barrier_BeginBufferload, 0, OCCLUSION_THREADCOUNT + 1);
+    pthread_barrier_init(&Barrier_EndBufferload, 0, OCCLUSION_THREADCOUNT + 1);
+    pthread_barrier_init(&Barrier_BeginLOS, 0, OCCLUSION_THREADCOUNT + 1);
+    pthread_barrier_init(&Barrier_EndLOS, 0, OCCLUSION_THREADCOUNT + 1);
+    ThreadPool = calloc(OCCLUSION_THREADCOUNT, sizeof(pthread_t));
+    int i;
+    for (i = 0; i < OCCLUSION_THREADCOUNT; i++)
+    {
+      pthread_create(ThreadPool + i, 0, __b_occludeThread, intap(i));
+    }
+  }
   int i;
   for (i = 0; i < 27; i++)
     occludedDir[i] = 0;
-  int playerZ, playerX, playerY;
+  int PlayerZ, PlayerX, PlayerY;
   uint* playerPos;
   GetDataFlag(player, FLAG_POS, (void**)&playerPos);
-  ConvertToZXY(*playerPos, &playerZ, &playerX, &playerY);
+  ConvertToZXY(*playerPos, &PlayerZ, &PlayerX, &PlayerY);
   _CACHE_OF(ENTITY)* container;
   GetDataFlag(map, FLAG_CONTAINER, (void**)&container);
   int* ViewRange = 0;
@@ -489,24 +664,26 @@ extern attrpure unsigned char* b_getOccluded(const ENTITY* map, const ENTITY* pl
     ViewRange = &r;
   }
   if (occludedLastX == -1)
-    occludedLastX = playerX;
+    occludedLastX = PlayerX;
   if (occludedLastY == -1)
-    occludedLastY = playerY;
+    occludedLastY = PlayerY;
   if (occludedLastZ == -1)
-    occludedLastZ = playerZ;
+    occludedLastZ = PlayerZ;
   int ovX, ovY, ovZ;
-  int LowX = min(occludedLastX - occludedLastSightRange, playerX - *ViewRange);
-  int HighX = max(occludedLastX + occludedLastSightRange, playerX + *ViewRange);
-  int LowY = min(occludedLastY - occludedLastSightRange, playerY - *ViewRange);
-  int HighY = max(occludedLastY + occludedLastSightRange, playerY + *ViewRange);
-  int LowZ = min(occludedLastZ - occludedLastSightRange, playerZ - *ViewRange);
-  int HighZ = max(occludedLastZ + occludedLastSightRange, playerZ + *ViewRange);
+  int LowX = min(occludedLastX - occludedLastSightRange, PlayerX - *ViewRange);
+  int HighX = max(occludedLastX + occludedLastSightRange, PlayerX + *ViewRange);
+  int LowY = min(occludedLastY - occludedLastSightRange, PlayerY - *ViewRange);
+  int HighY = max(occludedLastY + occludedLastSightRange, PlayerY + *ViewRange);
+  int LowZ = min(occludedLastZ - occludedLastSightRange, PlayerZ - *ViewRange);
+  int HighZ = max(occludedLastZ + occludedLastSightRange, PlayerZ + *ViewRange);
+  
   LowX = max(LowX, 0);
   HighX = min(HighX, MAP_WIDTH - 1);
   LowY = max(LowY, 0);
   HighY = min(HighY, MAP_HEIGHT - 1);
   LowZ = max(LowZ, 0);
   HighZ = min(HighZ, MAP_DEPTH - 1);
+
   for (ovX = LowX; ovX <= HighX; ovX++)
   {
     for (ovY = LowY; ovY <= HighY; ovY++)
@@ -517,91 +694,101 @@ extern attrpure unsigned char* b_getOccluded(const ENTITY* map, const ENTITY* pl
       }
     }
   }
-  occludedLastX = playerX;
-  occludedLastY = playerY;
-  occludedLastZ = playerZ;
+
+  occludedLastX = PlayerX;
+  occludedLastY = PlayerY;
+  occludedLastZ = PlayerZ;
   occludedLastSightRange = *ViewRange;
-  LowX = max(playerX - *ViewRange, 0);
-  HighX = min(playerX + *ViewRange, MAP_WIDTH - 1);
-  LowY = max(playerY - *ViewRange, 0);
-  HighY = min(playerY + *ViewRange, MAP_HEIGHT - 1);
-  LowZ = max(playerZ - *ViewRange, 0);
-  HighZ = min(playerZ + *ViewRange, MAP_DEPTH - 1);
-  for (i = 0; i < cacheLength(_CACHE(*container)); i++)
+  LowX = max(PlayerX - *ViewRange, 0);
+  HighX = min(PlayerX + *ViewRange, MAP_WIDTH - 1);
+  LowY = max(PlayerY - *ViewRange, 0);
+  HighY = min(PlayerY + *ViewRange, MAP_HEIGHT - 1);
+  LowZ = max(PlayerZ - *ViewRange, 0);
+  HighZ = min(PlayerZ + *ViewRange, MAP_DEPTH - 1);
+
+  occlusionMapContents = (ENTITY**)cacheAsList(_CACHE(*container));
+
+  occludedStaticInfo.PlayerX = PlayerX;
+  occludedStaticInfo.PlayerY = PlayerY;
+  occludedStaticInfo.PlayerZ = PlayerZ;
+  occludedStaticInfo.LowX = LowX;
+  occludedStaticInfo.LowY = LowY;
+  occludedStaticInfo.LowZ = LowZ;
+  occludedStaticInfo.HighX = HighX;
+  occludedStaticInfo.HighY = HighY;
+  occludedStaticInfo.HighZ = HighZ;
+  occludedStaticInfo.ViewRange = *ViewRange;
+  occludedStaticInfo.Player = player;
+
+  pthread_barrier_wait(&Barrier_BeginBufferload);
+  pthread_barrier_wait(&Barrier_EndBufferload);
+
+  int TX, TY, TZ;
+  for (TX = 0; TX <= *ViewRange; flipper(&TX))
   {
-    ENTITY* access = _CACHE_ACCESS(_CACHE(*container), i);
-    if (!access)
-      break;
-    if (!HasDataFlag(access, FLAG_POS) || !HasBoolFlag(access, BFLAG_OCCLUDING))
-      continue; //  you'd be hard pressed
-    int x, y, z;
-    uint* pos;
-    GetDataFlag(access, FLAG_POS, (void**)&pos);
-    ConvertToZXY(*pos, &z, &x, &y);
-    if (!InBounds3D(x, y, z))
+    if (!inRange(TX, LowX, HighX))
       continue;
-    occludedBuffer[x + y * MAP_WIDTH + z * MAP_CELLCOUNT] |= 0b1;
-    const int dX = x - playerX;
-    const int dY = y - playerY;
-    const int dZ = z - playerZ;
-    if (dX == 0 && dY == 0 && dZ == 0)
-      continue;
-    const int dXs = sign(dX);
-    const int dYs = sign(dY);
-    const int dZs = sign(dZ);
-    occludedDir[13 + dXs + dYs * 3 + dZs * 9] = 1;
-    occludedDir[13 + dXs + dYs * 3] = 1;
-    occludedDir[13 + dXs + dZs * 9] = 1;
-    occludedDir[13 + dYs * 3 + dZs * 9] = 1;
-    occludedDir[13 + dXs] = 1;
-    occludedDir[13 + dYs * 3] = 1;
-    occludedDir[13 + dZs * 9] = 1;
-  }
-  int oX;
-  for (oX = LowX; oX <= HighX; oX++)
-  {
-    int oY;
-    for (oY = LowY; oY <= HighY; oY++)
+    char XSign = sign(TX);
+    int XMag = abs(TX);
+    int RX = TX + PlayerX;
+    for (TY = 0; TY <= *ViewRange; flipper(&TY))
     {
-      int oZ;
-      for (oZ = LowZ; oZ <= HighZ; oZ++)
+      if (!inRange(TY, LowY, HighY))
+        continue;
+      char YSign = sign(TY);
+      int YMag = abs(TY);
+      int RY = TY + PlayerY;
+      for (TZ = 0; TZ <= *ViewRange; flipper(&TZ))
       {
-        const int dX = oX - playerX;
-        const int dY = oY - playerY;
-        const int dZ = oZ - playerZ;
-        const int oIndex = oX + oY * MAP_WIDTH + oZ * MAP_CELLCOUNT;
-        occludedBuffer[oIndex] &= 0b11;
-        if (ViewRange)
-          if (dX * dX + dY * dY + dZ * dZ >= ((float)(*ViewRange * *ViewRange)))
-          {
-            occludedBuffer[oIndex] |= 0b100;
-            continue;
-          }
-        // if (occludedDir[13 + sign(dX) + sign(dY) * 3 + sign(dZ) * 9] == 0)
-        // {
-        //   occludedBuffer[oIndex] = 0;
-        //   continue;
-        // }
-        if (occludedBuffer[oIndex] & 0b10)
+        if (!inRange(TZ, LowZ, HighZ))
           continue;
-        int count;
-        int** line = createLine(dX, dY, dZ, 1, &count);
-        for (i = 0; i < count - 1; i++)
+        char ZSign = sign(TZ);
+        int ZMag = abs(TZ);
+        int RZ = TZ + PlayerZ;
+
+        int XToCenter = TX - XSign + PlayerX;
+        int YToCenter = TY - YSign + PlayerY;
+        int ZToCenter = TZ - ZSign + PlayerZ;
+        if (!(occludedBuffer[XToCenter + YToCenter * MAP_WIDTH + ZToCenter * MAP_CELLCOUNT] & 0b11))
         {
-          const int lX = line[i][0] + playerX;
-          const int lY = line[i][1] + playerY;
-          const int lZ = line[i][2] + playerZ;
-          const int lIndex = lX + lY * MAP_WIDTH + lZ * MAP_CELLCOUNT;
-          if (occludedBuffer[lIndex] & 0b1)
-          {
-            occludedBuffer[oIndex] |= 0b10;
-            break;
-          }
+          continue; // principal isn't occluded how joyous
         }
-        freeLine(line, count);
+
+        char XBiggest = XMag >= ZMag && XMag >= YMag;
+        char YBiggest = YMag >= XMag && YMag >= ZMag;
+        char ZBiggest = ZMag >= XMag && ZMag >= YMag;
+        if (!XBiggest)
+        {
+          if (!(occludedBuffer[RX + YToCenter * MAP_WIDTH + ZToCenter * MAP_CELLCOUNT] & 0b11))
+            continue;
+          if (!YBiggest &&
+            !(occludedBuffer[RX + RY * MAP_WIDTH + ZToCenter * MAP_CELLCOUNT] & 0b11))
+            continue;
+        }
+        if (!YBiggest)
+        {
+          if (!(occludedBuffer[XToCenter + RY * MAP_WIDTH + ZToCenter * MAP_CELLCOUNT] & 0b11))
+            continue;
+          if (!ZBiggest &&
+            !(occludedBuffer[XToCenter + RY * MAP_WIDTH + RZ * MAP_CELLCOUNT] & 0b11))
+            continue;
+        }
+        if (!ZBiggest)
+        {
+          if (!(occludedBuffer[XToCenter + YToCenter * MAP_WIDTH + RZ * MAP_CELLCOUNT] & 0b11))
+            continue;
+          if (!XBiggest &&
+            !(occludedBuffer[RX + YToCenter * MAP_WIDTH + RZ * MAP_CELLCOUNT] & 0b11))
+            continue;
+        }
+        occludedBuffer[RX + RY * MAP_WIDTH + RZ * MAP_CELLCOUNT] |= 0b10;
       }
     }
   }
+
+  pthread_barrier_wait(&Barrier_BeginLOS);
+  pthread_barrier_wait(&Barrier_EndLOS);
+
   return occludedBuffer;
 }
 
@@ -926,6 +1113,14 @@ extern void b_writeHudToBuffer(B_BUFFER* buffer, const ENTITY* player)
   b_writeTwoColor(buffer, S_ROW - 1, xCur + 4, SpeedText, color, backcolor);
 
   // xCur += xTo + 4;
+
+  char uidTxt[S_COL];
+  ENTITY **contr;
+  GetDataFlag(player, FLAG_CONTAINEDBY, (void**)&contr);
+  _CACHE_OF(ENTITY)* con;
+  GetDataFlag(*contr, FLAG_CONTAINER, (void**)&con);
+  sprintf(uidTxt, "%d %d", GLOBAL_UID, cacheLength(_CACHE(*con)));
+  b_writeTo(buffer, 0, 0, uidTxt);
 }
 
 /* Not in keyhandler.h because of reliance on screen.h defined functions

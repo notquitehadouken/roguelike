@@ -1,0 +1,1 @@
+gcc -std=c89 -O3 -pthread main.c -o main.exe

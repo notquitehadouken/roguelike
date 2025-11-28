@@ -1,6 +1,7 @@
 // As Kaze Emanuar once said, "Make as many assumptions as possible in your code"
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #if defined DEBUG_MESSAGE_SILENCE\
   || defined DEBUG_MESSAGE_SHOW
@@ -20,6 +21,7 @@
 #define attrpure __attribute_pure__
 #define attrconst __attribute_const__
 #define attrmalloc __attribute_malloc__
+
 #include "global.h"
 #include "gamestate.h"
 #include "keyhandler.h"
@@ -27,8 +29,6 @@
 #include "screen.h"
 #include "generation.h"
 #include "acts.h"
-
-
 
 void runIntro(ENTITY* game)
 {
@@ -133,20 +133,14 @@ void runGame(ENTITY* game)
     {
       cacheShrink(_CACHE_REF(POSITION_CACHE + i));
     }
-    ENTITY** mapRef;
-    char gotMap = 0;
     ENTITY* player;
     GetDataFlag(game, FLAG_PLAYER, (void**)&player);
-    while (!gotMap)
-    {
-      GetDataFlag(player, FLAG_CONTAINEDBY, (void**)&mapRef);
-      if (!mapRef)
-        break;
-      GetBoolFlag(*mapRef, BFLAG_ISMAP, &gotMap);
-    }
-    const ENTITY* map = *mapRef;
+    _CACHE_OF(ENTITY)* mapContainer;
+    ENTITY* map = mapOf(player);
+    GetDataFlag(map, FLAG_CONTAINER, (void**)&mapContainer);
+    cacheShrink(_CACHE_REF(mapContainer));
     GetDataFlag(game, FLAG_APPEARANCE, (void**)&buffer);
-    if (gotMap)
+    if (map)
     {
       b_writeMapToBuffer(buffer, map, player);
     }
@@ -283,25 +277,7 @@ void runGame(ENTITY* game)
       }
     case JUMP:
       {
-        int *JumpHeight;
-        GetDataFlag(player, FLAG_CANJUMP, (void**)&JumpHeight);
-        if (!JumpHeight)
-          break;
-        ENTITY** ELIST;
-        int Count;
-        GetEntitiesOnPosition(map, PlayerX, PlayerY, &ELIST, &Count);
-        for (i = 0; i < Count; i++)
-        {
-          ENTITY* E = ELIST[i];
-          if (GetEntZ(E) != PlayerZ - 1)
-            continue;
-          if (Collide(player, E, 0))
-          {
-            SetDataFlag(player, FLAG_ZVEL, intap(-*JumpHeight));
-            break;
-          }
-        }
-        free(ELIST);
+        TryJump(player);
         break;
       }
     case KEY_MAPCOLORSCALINGTOGGLE:
@@ -373,6 +349,13 @@ void runGame(ENTITY* game)
         int X = PlayerX, Y = PlayerY, Z = PlayerZ;
         PositionSelect(buffer, map, player, &X, &Y, &Z);
         Explode(map, 4, 20, X, Y, Z);
+        break;
+      }
+    case I_CAST_GUN:
+      {
+        int X = PlayerX, Y = PlayerY, Z = PlayerZ;
+        PositionSelect(buffer, map, player, &X, &Y, &Z);
+
         break;
       }
     default:

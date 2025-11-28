@@ -9,7 +9,7 @@ unsigned long long GLOBAL_TIMER = 0; // 100 is considered "One second"
 
 enum ENTDATAFLAGS
 {
-  FLAG_PLACE = 0, // current life stage (int)
+  FLAG_PLACE = 0, // current life stage (int*)
   FLAG_NAME, // names of entities, player name for games (char*)
   FLAG_APPEARANCE, // screens for games, colors for objects (B_PIXEL*)
   FLAG_PLAYER, // current player entity in a game (ENTITY**)
@@ -17,11 +17,16 @@ enum ENTDATAFLAGS
   FLAG_CONTAINER, // entities this entity contains (_CACHE_OF(ENTITY)*)
   FLAG_CONTAINEDBY, // reverse of FLAG_CONTAINER (ENTITY**)
   FLAG_ZVEL, // upward velocity (int*)
+  FLAG_DECAY, // stop existing soon (int[2])
+  FLAG_BULLETINFO, // damage and pierce count for bullet steppers (int[2])
+  FLAG_GRENADEINFO, // damage and range info for grenade steppers (int[2])
+  FLAG_STEPPERINFO, // stepper information, XXYYZZ, accumulator/step time (int[6])
+  FLAG_STEPPERAIRTIME, // how long until a stepper become non-static (int*)
   FLAG_LEVITATE, // how high above the ground you can stay (int*)
   FLAG_CANJUMP, // how high you can jump (int*)
   FLAG_MAPS, // map list for games (_CACHE_OF(ENTITY)*)
   FLAG_CONTROLS, // controller for entities (ENTITY_CONTROLLER*). the player lacks a controller.
-  FLAG_HEALTH, // health and maximum health (int[2]*)
+  FLAG_HEALTH, // health and maximum health (int[2])
   FLAG_ARMOR, // flat reduction on damage (int*)
   FLAG_SPEED, // normal speed is 100. lower values mean faster (int*)
   FLAG_SIGHTRANGE, // how far you can see (int*)
@@ -40,6 +45,7 @@ enum ENTBOOLFLAGS
   BFLAG_INVISIBLE, // this entity is invisible to you and ai
   BFLAG_NORENDER, // do not render this entity
   BFLAG_OCCLUDING, // this entity blocks light
+  BFLAG_OCCLUDESFAR, // this entity blocks light only from a distance
   BFLAG_PUSHABLE, // this entity can be pushed by movers
   BFLAG_TOP, // amount of bflags
 };
@@ -49,8 +55,7 @@ typedef unsigned long long FLAG__TYPE;
 
 struct ENT
 {
-  void* data[FLAG_COUNT];
-  FLAG__TYPE dataflag;
+  void** data;
   FLAG__TYPE boolflag;
   UID__TYPE uid;
   char destroyed;
@@ -64,13 +69,14 @@ enum ENTCONTROLLERTYPE
   CONT_DEAD, // Equivalent to CONT_NOACTION
   CONT_ZVEL_HANDLE, // This entity makes shit fall
   CONT_MOVETOPLAYER, // Will walk in a straight line towards the player
-  CONT_DOOR, // Opens when something with BFLAG_DOOROPEN is near
+  CONT_DECAY, // Stop existing after FLAG_DECAYTIME
+  CONT_STEPPER, // Stepper
 };
 
 struct CONTROLLER
 {
   ENTITY* associate;
-  int type;
+  enum ENTCONTROLLERTYPE type;
   unsigned long long nextAct;
 };
 
@@ -88,8 +94,8 @@ extern void CreateEntity(ENTITY** out)
 {
   // creates an entity
   ENTITY* E = malloc(sizeof(ENTITY));
+  E->data = calloc(FLAG_TOP, sizeof(void*));
   E->destroyed = 0;
-  E->dataflag = 0;
   E->boolflag = 1;
   const int thisUid = ++GLOBAL_UID;
   E->uid = thisUid;
@@ -114,8 +120,8 @@ extern void CreateEntity(ENTITY** out)
   }
   UID_LOOKUP[thisUid] = E;
   int i;
-  for (i = 0; i < sizeof(unsigned long long) * 8; i++)
-  {
+  for (i = 0; i < FLAG_TOP; i++)
+  { // yeah i know calloc does it but consider the follow: fuck you
     E->data[i] = 0;
   }
   *out = E;
@@ -171,7 +177,7 @@ extern void ConvertToPosDat(const int Z, const int X, const int Y, uint* out)
  */
 extern attrpure char HasDataFlag(const ENTITY* E, const int flag)
 {
-  return (E->dataflag & (1 << flag)) != 0;
+  return E->data && E->data[flag] != 0;
 }
 
 /**
@@ -183,8 +189,8 @@ extern void ClearDataFlag(ENTITY* E, const int flag)
 {
   if (!HasDataFlag(E, flag))
     return;
-  E->dataflag &= ~(1 << flag);
   free(E->data[flag]);
+  E->data[flag] = 0;
 }
 
 /**
@@ -196,7 +202,6 @@ extern void ClearDataFlag(ENTITY* E, const int flag)
 extern void SetDataFlag(ENTITY* E, const int flag, void* value)
 {
   ClearDataFlag(E, flag); // memory leak (tm)
-  E->dataflag = E->dataflag | (1 << flag);
   E->data[flag] = value; // Hope you malloc'd.
 }
 
@@ -208,7 +213,7 @@ extern void SetDataFlag(ENTITY* E, const int flag, void* value)
  */
 extern void GetDataFlag(const ENTITY* E, const int flag, void** out)
 {
-  if (E->dataflag & (1 << flag))
+  if (E->data)
     *out = E->data[flag];
   else
     *out = 0;
@@ -368,7 +373,7 @@ extern void SetEntPos(ENTITY *E, const int X, const int Y, const int Z)
   SetDataFlag(E, FLAG_POS, uintap(Pos));
   if (InBounds(X, Y))
   {
-    cacheAdd((void****)(POSITION_CACHE + MAP_IND(X, Y)), E);
+    cacheAdd(_CACHE_REF(POSITION_CACHE + MAP_IND(X, Y)), E);
   }
 }
 
@@ -379,11 +384,12 @@ extern void SetEntPos(ENTITY *E, const int X, const int Y, const int Z)
 extern void DeleteEntity(ENTITY* E)
 {
   int i;
-  for (i = 0; i < FLAG_COUNT; i++)
+  for (i = 0; i < FLAG_TOP; i++)
   {
     ClearDataFlag(E, i);
   }
-  E->dataflag = 0;
+  free(E->data);
+  E->data = 0;
   E->boolflag = 0;
   E->destroyed = 1;
 }
