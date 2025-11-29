@@ -18,6 +18,8 @@ enum ENTDATAFLAGS
   FLAG_CONTAINEDBY, // reverse of FLAG_CONTAINER (ENTITY**)
   FLAG_ZVEL, // upward velocity (int*)
   FLAG_DECAY, // stop existing soon (int[2])
+  FLAG_DECAYCOLOR, // color of decay or trails, FGR, FGG, FGB... (int[6])
+  FLAG_TRAIL, // when this entity moves, make a trail that lasts for this long (int*)
   FLAG_BULLETINFO, // damage and pierce count for bullet steppers (int[2])
   FLAG_GRENADEINFO, // damage and range info for grenade steppers (int[2])
   FLAG_STEPPERINFO, // stepper information, XXYYZZ, accumulator/step time (int[6])

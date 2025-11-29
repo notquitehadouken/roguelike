@@ -409,10 +409,12 @@ extern int TryMove3D(ENTITY* E, const int dX, const int dY, int dZ)
   GetDataFlag(E, FLAG_POS, (void**)&posDat);
   ConvertToZXY(*posDat, &curZ, &curX, &curY);
 
+  if (HasDataFlag(E, FLAG_TRAIL))
+    makeTrail(E);
+
   int z = curZ + dZ;
   const int x = curX + dX;
   const int y = curY + dY;
-  int targetZ = z;
   if (!InBounds3D(x, y, z))
     return -1;
 
@@ -456,7 +458,8 @@ extern int TryMove3D(ENTITY* E, const int dX, const int dY, int dZ)
       ENTITY* AeE = ELIST[i];
       if (LevitationPos == 0)
         continue;
-      if (GetEntZ(AeE) == z - LowerSpot && Collide(E, AeE, 0, 0, dZ))
+      int TargetZ = GetEntZ(AeE);
+      if (TargetZ == z - LowerSpot && Collide(E, AeE, 0, 0, dZ))
       {
         EntitiesHit[i] = 1;
         Supported = 1;
@@ -474,14 +477,9 @@ extern int TryMove3D(ENTITY* E, const int dX, const int dY, int dZ)
 
   z = curZ + dZ;
 
-  if (dX == 0 && dY == 0)
+  if (dX == 0 && dY == 0 && dZ == 0)
   {
-    if (dZ == 0)
-    {
-      return -1;
-    }
-    SetEntZ(E, targetZ);
-    return ScaleTime(TIMEOF_MOVE, E);
+    return -1;
   }
 
   ENTITY** ELIST;
@@ -495,9 +493,34 @@ extern int TryMove3D(ENTITY* E, const int dX, const int dY, int dZ)
   // We only care about climbing for horizontal movement
   const char canClimb = dZ == 0 && !HasBoolFlag(E, BFLAG_STATIC) && HasBoolFlag(E, BFLAG_CLIMBER);
   char frontBlocked = 0;
-  char topBlocked = 0;
-  char aboveBlocked = 0;
-  if (canClimb)
+  char topBlocked = !inRange(z + 1, 0, MAP_DEPTH - 1);
+  char aboveBlocked = topBlocked;
+  if (E->destroyed)
+  {
+    free(ELIST);
+    return -1;
+  }
+  for (i = 0; i < count; i++)
+  {
+    if (E->destroyed)
+    {
+      free(ELIST);
+      return -1; // Lol.
+    }
+    int Z = GetEntZ(ELIST[i]);
+    if (Z == z && !frontBlocked)
+    {
+      if (Collide(E, ELIST[i], dX, dY, dZ))
+        frontBlocked = 1;
+      continue;
+    }
+    if (canClimb && Z == z + 1 && !topBlocked)
+    {
+      if (Collide(E, ELIST[i], dX, dY, dZ))
+        topBlocked = 1;
+    }
+  }
+  if (frontBlocked && canClimb && !aboveBlocked)
   {
     ENTITY** ELISTSAMEPOS;
     int countSamePos = 0;
@@ -505,7 +528,7 @@ extern int TryMove3D(ENTITY* E, const int dX, const int dY, int dZ)
     {
       free(ELIST);
       free(ELISTSAMEPOS);
-      return -1; // Failure of this method means the map does not exist.
+      return -1;
     }
     for (i = 0; i < countSamePos; i++)
     {
@@ -526,50 +549,17 @@ extern int TryMove3D(ENTITY* E, const int dX, const int dY, int dZ)
     free(ELIST);
     return -1;
   }
-  for (i = 0; i < count; i++)
-  {
-    if (E->destroyed)
-    {
-      free(ELIST);
-      return -1; // Lol.
-    }
-    int Z, u;
-    int* EPos;
-    GetDataFlag(ELIST[i], FLAG_POS, (void**)&EPos);
-    ConvertToZXY(*EPos, &Z, &u, &u);
-    if (Z == z && !frontBlocked)
-    {
-      if (Collide(E, ELIST[i], dX, dY, dZ))
-        frontBlocked = 1;
-      continue;
-    }
-    if (canClimb && Z == z + 1 && !topBlocked)
-    {
-      if (Collide(E, ELIST[i], dX, dY, dZ))
-        topBlocked = 1;
-    }
-  }
   if (frontBlocked)
   {
     if (!canClimb || topBlocked || aboveBlocked)
     {
       return -1;
     }
-    targetZ++;
+    z++;
   }
   free(ELIST);
   MoveEnt(E, x, y);
-  SetEntZ(E, targetZ);
-  if (HasDataFlag(E, FLAG_BULLETINFO))
-  {
-    B_PIXEL *App;
-    GetDataFlag(E, FLAG_APPEARANCE, (void**)&App);
-    if (App)
-    {
-      ENTITY *Trail = entPrefab(PREFAB_BULLETGFX, map, curX, curY, curZ);
-      entSetText(Trail, App->text);
-    }
-  }
+  SetEntZ(E, z);
   return ScaleTime(TIMEOF_MOVE, E);
 }
 
@@ -692,46 +682,50 @@ extern void Explode(ENTITY* map, const int Range, const int Power, const int X, 
   }
 }
 
-extern ENTITY* ShootBullet(ENTITY* shooter, const int Damage, int XV, int YV, int ZV)
+/**
+ * Returns 0 if it cannot create a bullet.
+ */
+extern ENTITY* ShootBullet(ENTITY* shooter, const int Damage, int DX, int DY, int DZ)
 {
+  if (DX == 0 && DY == 0 && DZ == 0)
+    return 0;
+  int DXAbs = abs(DX);
+  int DYAbs = abs(DY);
+  int DZAbs = abs(DZ);
+  int DTotal = DXAbs + DYAbs + DZAbs;
+  int XV = (DTotal == DXAbs) ? DX : ((DTotal - DXAbs) * sign(DX));
+  int YV = (DTotal == DYAbs) ? DY : ((DTotal - DYAbs) * sign(DY));
+  int ZV = (DTotal == DZAbs) ? DZ : ((DTotal - DZAbs) * sign(DZ));
   int X, Y, Z;
   uint *Pos;
   GetDataFlag(shooter, FLAG_POS, (void**)&Pos);
   ConvertToZXY(*Pos, &Z, &X, &Y);
-  ENTITY **map;
-  GetDataFlag(shooter, FLAG_CONTAINEDBY, (void**)&map);
-  ENTITY* LeBoolet = entPrefab(PREFAB_BULLET, *map, X, Y, Z);
+  ENTITY *map = mapOf(shooter);
+  ENTITY* LeBoolet = entPrefab(PREFAB_BULLET, map, X, Y, Z);
   SetDataFlag(LeBoolet, FLAG_BULLETINFO, int2ap(Damage, 0));
   int XVAbs = abs(XV);
   int YVAbs = abs(YV);
   int ZVAbs = abs(ZV);
-  float CurSpeed = 100.0 / XVAbs + 100.0 / YVAbs + 100.0 / ZVAbs;
-  static const int BulletVelocity = 25;
-  static const float BulletVelInv = 1 / BulletVelocity;
-  XV *= CurSpeed;
-  XV *= BulletVelInv;
-  YV *= CurSpeed;
-  XV *= BulletVelInv;
-  ZV *= CurSpeed;
-  XV *= BulletVelInv;
-  addStepper(LeBoolet, XV, YV, ZV, 250);
-  if (ZVAbs > XVAbs * 2 && ZVAbs > YVAbs * 2)
+  float CurSpeed = (XVAbs ? (100.0 / XVAbs) : 0) + (YVAbs ? (100.0 / YVAbs) : 0) + (ZVAbs ? (100.0 / ZVAbs) : 0);
+  static const int BulletVelocity = 50;
+  static const float BulletVelInv = 1.0 / (float)BulletVelocity;
+  if (DZAbs > DXAbs * 2 && DZAbs > DYAbs * 2)
   {
     entSetText(LeBoolet, '*');
   }
   else
   {
-    if (XVAbs > YVAbs * 3)
+    if (DXAbs > DYAbs * 3)
     {
       entSetText(LeBoolet, '-');
     }
-    else if (YVAbs > XVAbs * 3)
+    else if (DYAbs > DXAbs * 3)
     {
       entSetText(LeBoolet, '|');
     }
     else
     {
-      if (sign(XV) == sign(YV))
+      if (sign(DX) == sign(DY))
       {
         entSetText(LeBoolet, '\\');
       }
@@ -741,6 +735,13 @@ extern ENTITY* ShootBullet(ENTITY* shooter, const int Damage, int XV, int YV, in
       }
     }
   }
+  XV *= CurSpeed;
+  XV *= BulletVelInv;
+  YV *= CurSpeed;
+  YV *= BulletVelInv;
+  ZV *= CurSpeed;
+  ZV *= BulletVelInv;
+  addStepper(LeBoolet, XV, YV, ZV, -1);
   return LeBoolet;
 }
 
@@ -791,6 +792,7 @@ extern void TryJump(ENTITY* E)
  */
 extern char ControllerProcess(ENTITY_CONTROLLER* controller, const ENTITY* game)
 {
+  char hi = ';';
   switch (controller->type)
   {
   default:
@@ -806,21 +808,21 @@ extern char ControllerProcess(ENTITY_CONTROLLER* controller, const ENTITY* game)
       static const int granularity = 5; // must be divisible by timePerAccel
       static const int stepSize = timePerAccel / granularity;
       const int stepID = (controller->nextAct % timePerAccel) / stepSize;
-      controller->nextAct += stepSize;
-      int i;
+      int i, j;
       int* StartIndForZ = calloc(MAP_DEPTH, sizeof(int));
       int* EndIndForZ = calloc(MAP_DEPTH, sizeof(int));
+      controller->nextAct += stepSize;
       for (i = 0; i < MAP_CELLCOUNT; i++)
       {
         const int X = i % MAP_WIDTH;
         const int Y = i / MAP_WIDTH;
         ENTITY** ELIST = GetEntsAtPos(X, Y);
         int len = 0;
+        unsigned char* EPOS;
+        ENTITY** MapOf;
         for (; ELIST[len]; len++);
-        unsigned char* EPOS = calloc(len, sizeof(char));
-        ENTITY** MapOf = calloc(len, sizeof(ENTITY*));
-
-        int j;
+        EPOS = calloc(len, sizeof(char));
+        MapOf = calloc(len, sizeof(ENTITY*));
 
         for (j = 0; j < MAP_DEPTH; j++)
         {
@@ -979,15 +981,27 @@ extern char ControllerProcess(ENTITY_CONTROLLER* controller, const ENTITY* game)
       }
 
       float Doneness = (float)(decayInfo[0]) / (float)(decayInfo[1]);
-      int DT = GLOBAL_TIMER - controller->nextAct;
+      int DT = GLOBAL_TIMER - controller->nextAct + 1;
       decayInfo[0] -= DT;
       if (decayInfo[0] <= 0)
       {
         BreakEntity(controller->associate);
         return 0;
       }
-      int NewBGColor = colorOf(Doneness * 255, Doneness * 127, 0);
-      int NewFGColor = colorOf(Doneness * 255, Doneness * 63, 0);
+
+      int NewFGColor, NewBGColor;
+      if (HasDataFlag(controller->associate, FLAG_DECAYCOLOR))
+      {
+        int *DecayColor;
+        GetDataFlag(controller->associate, FLAG_DECAYCOLOR, (void**)&DecayColor);
+        NewFGColor = colorOf(Doneness * DecayColor[0], Doneness * DecayColor[1], Doneness * DecayColor[2]);
+        NewBGColor = colorOf(Doneness * DecayColor[3], Doneness * DecayColor[4], Doneness * DecayColor[5]);
+      }
+      else
+      {
+        NewFGColor = colorOf(Doneness * 255, Doneness * 255, Doneness * 255);
+        NewBGColor = colorOf(Doneness * 255, Doneness * 255, Doneness * 255);
+      }
       entSetColor(controller->associate, NewFGColor, NewBGColor, 255);
       controller->nextAct = GLOBAL_TIMER + 1;
       return 0;
@@ -1010,13 +1024,11 @@ extern char ControllerProcess(ENTITY_CONTROLLER* controller, const ENTITY* game)
       int X, Y, Z;
       ConvertToZXY(*Pos, &Z, &X, &Y);
 
-      int XSign = Stepperinfo[1];
-      int YSign = Stepperinfo[3];
-      int ZSign = Stepperinfo[5];
+      int XSign = sign(Stepperinfo[1]);
+      int YSign = sign(Stepperinfo[3]);
+      int ZSign = sign(Stepperinfo[5]);
 
-      const int GlobalDT = GLOBAL_TIMER - controller->nextAct;
-
-      int TargetDT = GlobalDT;
+      int TargetDT = 10000;
 
       if (Stepperinfo[1])
         mini(&TargetDT, abs(Stepperinfo[1]));
@@ -1040,33 +1052,36 @@ extern char ControllerProcess(ENTITY_CONTROLLER* controller, const ENTITY* game)
       Stepperinfo[2] += TargetDT;
       Stepperinfo[4] += TargetDT;
 
-      for (;;)
+      int dX, dY, dZ = dY = dX = 0;
+
+      if (XSign && Stepperinfo[0] > abs(Stepperinfo[1]))
       {
-        int dX, dY, dZ = dY = dX = 0;
+        Stepperinfo[0] -= abs(Stepperinfo[1]);
+        dX = XSign;
+      }
+      if (YSign && Stepperinfo[2] > abs(Stepperinfo[3]))
+      {
+        Stepperinfo[2] -= abs(Stepperinfo[3]);
+        dY = YSign;
+      }
+      if (ZSign && Stepperinfo[4] > abs(Stepperinfo[5]))
+      {
+        Stepperinfo[4] -= abs(Stepperinfo[5]);
+        dZ = ZSign;
+      }
 
-        if (XSign && Stepperinfo[0] > abs(Stepperinfo[1]))
-        {
-          Stepperinfo[0] -= abs(Stepperinfo[1]);
-          dX = XSign;
-        }
-        if (YSign && Stepperinfo[2] > abs(Stepperinfo[3]))
-        {
-          Stepperinfo[2] -= abs(Stepperinfo[3]);
-          dY = YSign;
-        }
-        if (ZSign && Stepperinfo[4] > abs(Stepperinfo[5]))
-        {
-          Stepperinfo[4] -= abs(Stepperinfo[5]);
-          dZ = ZSign;
-        }
+      TryMove3D(E, dX, dY, dZ);
 
-        TryMove3D(E, dX, dY, dZ);
-
-        break;
+      if (!InBounds3D(X + dX, Y + dY, Z + dZ))
+      {
+        BreakEntity(controller->associate);
+        return 0;
       }
 
       if (!E->destroyed)
         controller->nextAct += TargetDT;
+
+      return 1;
     }
   }
   return 0;

@@ -563,17 +563,18 @@ extern __attribute__ ((__noreturn__)) void* __b_occludeThread(void* arg)
     pthread_barrier_wait(&Barrier_EndBufferload);
     pthread_barrier_wait(&Barrier_BeginLOS);
 
+    int accumulate = 0;
     int oX;
     for (oX = LowX; oX <= HighX; oX++)
     {
       int oY;
       for (oY = LowY; oY <= HighY; oY++)
       {
-        if ((oX + oY) % OCCLUSION_THREADCOUNT != Index)
-          continue;
         int oZ;
         for (oZ = LowZ; oZ <= HighZ; oZ++)
         {
+          if (accumulate++ % OCCLUSION_THREADCOUNT != Index)
+            continue;
           const int dX = oX - PlayerX;
           const int dY = oY - PlayerY;
           const int dZ = oZ - PlayerZ;
@@ -676,7 +677,7 @@ extern unsigned char* b_getOccluded(const ENTITY* map, const ENTITY* player)
   int HighY = max(occludedLastY + occludedLastSightRange, PlayerY + *ViewRange);
   int LowZ = min(occludedLastZ - occludedLastSightRange, PlayerZ - *ViewRange);
   int HighZ = max(occludedLastZ + occludedLastSightRange, PlayerZ + *ViewRange);
-  
+
   LowX = max(LowX, 0);
   HighX = min(HighX, MAP_WIDTH - 1);
   LowY = max(LowY, 0);
@@ -789,6 +790,7 @@ extern unsigned char* b_getOccluded(const ENTITY* map, const ENTITY* player)
   pthread_barrier_wait(&Barrier_BeginLOS);
   pthread_barrier_wait(&Barrier_EndLOS);
 
+  free(occlusionMapContents);
   return occludedBuffer;
 }
 
@@ -1113,14 +1115,6 @@ extern void b_writeHudToBuffer(B_BUFFER* buffer, const ENTITY* player)
   b_writeTwoColor(buffer, S_ROW - 1, xCur + 4, SpeedText, color, backcolor);
 
   // xCur += xTo + 4;
-
-  char uidTxt[S_COL];
-  ENTITY **contr;
-  GetDataFlag(player, FLAG_CONTAINEDBY, (void**)&contr);
-  _CACHE_OF(ENTITY)* con;
-  GetDataFlag(*contr, FLAG_CONTAINER, (void**)&con);
-  sprintf(uidTxt, "%d %d", GLOBAL_UID, cacheLength(_CACHE(*con)));
-  b_writeTo(buffer, 0, 0, uidTxt);
 }
 
 /* Not in keyhandler.h because of reliance on screen.h defined functions

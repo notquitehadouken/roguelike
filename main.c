@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <threads.h>
 
 #if defined DEBUG_MESSAGE_SILENCE\
   || defined DEBUG_MESSAGE_SHOW
@@ -114,15 +115,13 @@ void runIntro(ENTITY* game)
   SetDataFlag(game, FLAG_PLACE, intap(PLAYING));
 }
 
-
 void runGame(ENTITY* game)
 {
   B_BUFFER* buffer;
-  int actNext = 0x0;
-  int leadAct = 0x0;
-  int tailAct = 0x0;
   char* commAct;
   int* CSTATE = 0;
+int leadAct = 0x0;
+  int actNext = 0x0;
   while (!CSTATE || *CSTATE == PLAYING)
   {
     GetDataFlag(game, FLAG_PLACE, (void**)&CSTATE);
@@ -133,6 +132,7 @@ void runGame(ENTITY* game)
     {
       cacheShrink(_CACHE_REF(POSITION_CACHE + i));
     }
+
     ENTITY* player;
     GetDataFlag(game, FLAG_PLAYER, (void**)&player);
     _CACHE_OF(ENTITY)* mapContainer;
@@ -159,6 +159,7 @@ void runGame(ENTITY* game)
 
     switch (leadAct)
     {
+    case 0:
     case FAIL:
       break;
     case STR_COMM:
@@ -355,7 +356,7 @@ void runGame(ENTITY* game)
       {
         int X = PlayerX, Y = PlayerY, Z = PlayerZ;
         PositionSelect(buffer, map, player, &X, &Y, &Z);
-
+        ShootBullet(player, 1, X - PlayerX,Y - PlayerY,Z - PlayerZ);
         break;
       }
     default:

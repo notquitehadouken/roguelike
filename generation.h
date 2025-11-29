@@ -1,3 +1,7 @@
+/**
+ * Makes shit.
+ */
+
 #pragma once
 
 #include "global.h"
@@ -10,6 +14,7 @@ enum ENT_PREFAB
   PREFAB_PUSHBOX,
   PREFAB_FRAGILEWALL,
   PREFAB_BULLET,
+  PREFAB_TRAIL,
   PREFAB_EXPLOSIONGFX,
   PREFAB_BULLETGFX,
 };
@@ -211,6 +216,48 @@ extern void addStepper(ENTITY *E, const int tX, const int tY, const int tZ, cons
   AddController(E, CreateController(CONT_STEPPER));
 }
 
+extern ENTITY* makeTrail(ENTITY* template)
+{
+  ENTITY *In, **RIn, *Trail;
+  int X, Y, Z;
+  uint *Pos;
+  char Text;
+  B_PIXEL *Pixel;
+  GetDataFlag(template, FLAG_POS, (void**)&Pos);
+  ConvertToZXY(*Pos, &Z, &X, &Y);
+  GetDataFlag(template, FLAG_APPEARANCE, (void**)&Pixel);
+  Text = Pixel->text;
+  GetDataFlag(template, FLAG_CONTAINEDBY, (void**)&RIn);
+  In = *RIn;
+  Trail = entFactory(In, X, Y, Z, Text);
+  entSetColor(Trail, 255, 255, max(0, Pixel->renderorder - 1));
+  if (HasDataFlag(template, FLAG_TRAIL))
+  {
+    int *TrailDuration;
+    GetDataFlag(template, FLAG_TRAIL, (void**)&TrailDuration);
+    SetDataFlag(Trail, FLAG_DECAY, int2ap(*TrailDuration, *TrailDuration));
+  }
+  else
+  {
+    SetDataFlag(Trail, FLAG_DECAY, int2ap(100, 100));
+  }
+  if (HasDataFlag(template, FLAG_DECAYCOLOR))
+  {
+    int *DecayColor, *NColor;
+    GetDataFlag(template, FLAG_TRAIL, (void**)&DecayColor);
+    NColor = calloc(6, sizeof(int));
+    NColor[0] = DecayColor[0];
+    NColor[1] = DecayColor[1];
+    NColor[2] = DecayColor[2];
+    NColor[3] = DecayColor[3]; // for loops are for suckers
+    NColor[4] = DecayColor[4];
+    NColor[5] = DecayColor[5];
+    SetDataFlag(Trail, FLAG_DECAYCOLOR, NColor);
+  }
+  AddController(Trail, CreateController(CONT_DECAY));
+  return Trail;
+}
+
 /**
  * Generates an entity from a template.
  */
@@ -270,9 +317,10 @@ extern ENTITY* entPrefab(const enum ENT_PREFAB PrefabID, ENTITY* In, const int X
   case PREFAB_BULLET:
     {
       ENTITY* ent = entFactory(In, X, Y, Z, '#');
-      entSetColor(ent, colorOf(255, 255, 0), 0, 256);
+      entSetColor(ent, colorOf(255, 255, 0), 0, 255);
       entSetName(ent, "Boolet");
       SetBoolFlag(ent, BFLAG_STATIC);
+      SetDataFlag(ent, FLAG_TRAIL, intap(50));
       return ent;
     }
   case PREFAB_EXPLOSIONGFX:
@@ -284,6 +332,12 @@ extern ENTITY* entPrefab(const enum ENT_PREFAB PrefabID, ENTITY* In, const int X
       int decayTime = 125;
       decayTime += random_nextInt() % 76;
       SetDataFlag(ent, FLAG_DECAY, int2ap(decayTime, decayTime));
+      int *decayColors = calloc(6, sizeof(int));
+      decayColors[0] = decayColors[4] = 255;
+      decayColors[1] = 160;
+      decayColors[3] = 100;
+      decayColors[2] = decayColors[5] = 0;
+      SetDataFlag(ent, FLAG_DECAYCOLOR, decayColors);
       AddController(ent, CreateController(CONT_DECAY));
       return ent;
     }
@@ -366,14 +420,13 @@ extern void generateGame(ENTITY** out)
 
   ENTITY* playerEnt = entFactory(map, 1, 1, 1, '@');
   entSetColor(playerEnt, 0, 12, 255);
-  char *playeynamey;
 
   entSetName(playerEnt, "Player");
 
   SetDataFlag(playerEnt, FLAG_HEALTH, int2ap(100, 100));
-  SetDataFlag(playerEnt, FLAG_SPEED, intap(50));
+  SetDataFlag(playerEnt, FLAG_SPEED, intap(1));
   SetDataFlag(playerEnt, FLAG_CANJUMP, intap(4));
-  SetDataFlag(playerEnt, FLAG_SIGHTRANGE, intap(20));
+  SetDataFlag(playerEnt, FLAG_SIGHTRANGE, intap(40));
 
   SetBoolFlag(playerEnt, BFLAG_CLIMBER);
 

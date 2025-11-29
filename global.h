@@ -7,8 +7,8 @@
 enum TIMEOF_ENUM
 {
   TIMEOF_COLLIDE = 10,
-  TIMEOF_SHORTWAIT = 25, // Time of pressing w (lowercase)
-  TIMEOF_LONGWAIT = 100, // Time of pressing W (uppercase)
+  TIMEOF_SHORTWAIT = 1, // Time of pressing w (lowercase)
+  TIMEOF_LONGWAIT = 25, // Time of pressing W (uppercase)
   TIMEOF_MOVE = 100, // How long it takes to move 1 tile by default
 };
 
@@ -249,8 +249,7 @@ extern void colorOf8Bit(const unsigned char color, unsigned char* R, unsigned ch
   if (color >= 232)
   {
     unsigned char intensity = (color - 232) * 10 + 8;
-    if (intensity == 255)
-      intensity = 0xee;
+
     *R = *G = *B = intensity;
     return;
   }
@@ -267,6 +266,15 @@ extern attrmalloc uint* uintap(const uint val)
 {
   uint* rValue = malloc(sizeof(uint));
   *rValue = val;
+  return rValue;
+}
+
+extern attrmalloc int* intlap(const int val[], const int count)
+{
+  int i;
+  int *rValue = calloc(count, sizeof(int));
+  for (i = 0; i < count; i++)
+    rValue[i] = val[i];
   return rValue;
 }
 
